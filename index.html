@@ -688,6 +688,9 @@ url:e,reason:"blocked_domain_not_allowlisted"},b.parentOrigin);throw new DOMExce
                     <p class="text-slate-700 font-semibold text-lg mb-1">
                         No study material uploaded yet.
                     </p>
+                    <p id="empty-cloud-warning" class="text-amber-600 text-xs sm:text-sm mt-2 hidden">
+                        Images could not be loaded right now. Please try again later.
+                    </p>
                     <p id="empty-owner-hint" class="text-slate-400 text-xs sm:text-sm hidden">
                         Click the <span class="text-blue-600 font-semibold">+</span> button or drag &amp; drop images here to upload.
                     </p>
@@ -713,8 +716,8 @@ url:e,reason:"blocked_domain_not_allowlisted"},b.parentOrigin);throw new DOMExce
 
             <!-- Live Cloud DB Setup Button (Visible ONLY when Owner is unlocked) -->
             <button id="cloud-setup-btn" type="button" title="Configure Live Firebase Cloud Database" class="px-3.5 py-2.5 rounded-full bg-white/95 hover:bg-blue-50 text-slate-700 hover:text-blue-600 border border-blue-200 shadow-sm backdrop-blur-md transition-all duration-200 flex items-center gap-1.5 text-xs font-semibold hidden">
-                <span id="cloud-status-dot" class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                <span id="cloud-status-text">Cloud Error (Click Here)</span>
+                <span id="cloud-status-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                <span id="cloud-status-text">Connecting Cloud...</span>
             </button>
 
             <!-- Export HTML for Web Host (Visible ONLY when Owner is unlocked) -->
@@ -800,9 +803,9 @@ url:e,reason:"blocked_domain_not_allowlisted"},b.parentOrigin);throw new DOMExce
 
             <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 text-xs text-slate-600 space-y-1.5 mb-4 leading-relaxed">
                 <p class="font-semibold text-slate-800">Your Firebase Project (<code class="text-blue-600">study-material-388b7</code>) Status:</p>
-                <div id="cloud-diagnostic-box" class="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 font-medium"><b>Public Cloud Write Blocked (permission-denied):</b><br>Open your Firebase Console → <b>Firestore Database</b> → click <b>Create database</b> (if not created yet) → go to the <b>Rules</b> tab and set:<br><code class="bg-white px-1.5 py-0.5 rounded border border-red-200 block mt-1 text-[11px]">allow read, write: if true;</code></div>
+                <div id="cloud-diagnostic-box" class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 font-medium">Checking cloud connection...</div>
                 <ol class="list-decimal list-inside space-y-1 pt-1">
-                    <li>In Firebase Console → <b>Firestore Database</b> → <b>Rules</b> tab, make sure it says: <code class="text-blue-600">allow read, write: if true;</code> and click <b>Publish</b>.</li>
+                    <li>In Firebase Console → <b>Firestore Database</b> → <b>Rules</b> tab, replace the rules with the block shown in the red box (public read + write) and click <b>Publish</b>. If you started in "Test mode", those rules <b>expire after 30 days</b> and then everything is denied.</li>
                     <li>Click <b>Sync Local Images to Cloud Now</b> below to push all local images to the public cloud.</li>
                 </ol>
             </div>
@@ -1506,7 +1509,7 @@ url:e,reason:"blocked_domain_not_allowlisted"},b.parentOrigin);throw new DOMExce
                 cloudModalBadge.className = 'text-xs font-semibold text-red-600';
                 if (cloudDiagnosticBox) {
                     cloudDiagnosticBox.className = 'p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 font-medium';
-                    cloudDiagnosticBox.innerHTML = `<b>Public Cloud Write Blocked (${lastCloudError}):</b><br/>Open your Firebase Console → <b>Firestore Database</b> → click <b>Create database</b> (if not created yet) → go to the <b>Rules</b> tab and set:<br/><code class="bg-white px-1.5 py-0.5 rounded border border-red-200 block mt-1 text-[11px]">allow read, write: if true;</code>`;
+                    cloudDiagnosticBox.innerHTML = `<b>Public Cloud Blocked (${lastCloudError}):</b><br/>Visitors cannot see images because Firestore is refusing access. Open Firebase Console → <b>Firestore Database</b> → <b>Rules</b>, paste this and click <b>Publish</b>:<pre class="bg-white px-2 py-1.5 rounded border border-red-200 mt-1 text-[11px] whitespace-pre-wrap">rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /{document=**} {\n      allow read, write: if true;\n    }\n  }\n}</pre>Then reload and press <b>Sync Local Images to Cloud Now</b>.`;
                 }
                 return;
             }
@@ -1533,8 +1536,13 @@ url:e,reason:"blocked_domain_not_allowlisted"},b.parentOrigin);throw new DOMExce
             }
         }
 
+        let lastAutoSyncAt = 0;
         function updateOwnerUI() {
             updateCloudStatusBadge();
+            if (isOwner && isCloudActive && !lastCloudError && Date.now() - lastAutoSyncAt > 15000) {
+                lastAutoSyncAt = Date.now();
+                setTimeout(() => syncAllImagesToCloud(true), 800);
+            }
             if (isOwner) {
                 uploadFab.classList.remove('hidden');
                 exportSiteBtn.classList.remove('hidden');
@@ -1672,6 +1680,8 @@ url:e,reason:"blocked_domain_not_allowlisted"},b.parentOrigin);throw new DOMExce
             if (galleryItems.length === 0) {
                 emptyState.classList.remove('hidden');
                 galleryGrid.classList.add('hidden');
+                const w = document.getElementById('empty-cloud-warning');
+                if (w) w.classList.toggle('hidden', !lastCloudError);
                 return;
             }
 
@@ -1772,6 +1782,17 @@ url:e,reason:"blocked_domain_not_allowlisted"},b.parentOrigin);throw new DOMExce
             });
 
             innerWrapper.appendChild(img);
+            if (isOwner && isCloudActive && !lastCloudError && !cloudItems.some((c) => c.id === item.id)) {
+                const tag = document.createElement('span');
+                tag.className = 'absolute bottom-2 left-2 z-10 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow';
+                tag.textContent = 'Not public yet';
+                innerWrapper.appendChild(tag);
+            } else if (isOwner && lastCloudError && !cloudItems.some((c) => c.id === item.id)) {
+                const tag = document.createElement('span');
+                tag.className = 'absolute bottom-2 left-2 z-10 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold shadow';
+                tag.textContent = 'Only on this device';
+                innerWrapper.appendChild(tag);
+            }
             innerWrapper.appendChild(hoverOverlay);
             innerWrapper.appendChild(selectBtn);
             innerWrapper.appendChild(deleteBtn);
@@ -1973,8 +1994,8 @@ url:e,reason:"blocked_domain_not_allowlisted"},b.parentOrigin);throw new DOMExce
                 completeUploadProgressUI(uploadedCount, `Upload Cancelled (${uploadedCount} Saved)`);
                 showToast(`Upload stopped. ${uploadedCount} image${uploadedCount === 1 ? '' : 's'} saved.`);
             } else if (lastCloudError) {
-                completeUploadProgressUI(uploadedCount, `Saved Locally (Cloud Rule Needed)`);
-                showToast(`Saved locally! Click "Cloud Error" button at bottom-left to enable public access.`);
+                completeUploadProgressUI(uploadedCount, `NOT PUBLIC: Saved on this device only`);
+                showToast(`Visitors cannot see these yet. Click the red Cloud button (bottom-left) and fix the Firestore rules.`);
             } else {
                 completeUploadProgressUI(uploadedCount, `Published ${cloudSuccessCount || uploadedCount} Image${uploadedCount === 1 ? '' : 's'} to Public!`);
                 showToast(`Published ${cloudSuccessCount || uploadedCount} image(s) to live public cloud!`);
