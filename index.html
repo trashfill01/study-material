@@ -1330,7 +1330,7 @@
             }
 
             // Add all selected files (100, 500, 1000+) into the unlimited queue
-            uploadQueue.push(...validFiles);
+            for (const file of validFiles) uploadQueue.push(file);
             totalQueuedInSession += validFiles.length;
 
             if (!isProcessingQueue) {
@@ -1356,7 +1356,7 @@
         async function processUnlimitedUploadQueue() {
             isProcessingQueue = true;
             const CONCURRENCY = 12; // Parallel image compression in browser
-            const CLOUD_BATCH_SIZE = 4; // Safe Firestore batch size (< 2.5MB per batch so Firebase never rejects it!)
+            const CLOUD_BATCH_SIZE = 8; // Fewer network round trips; compressed images stay within Firestore request limits.
             let cloudSuccessCount = 0;
 
             while (uploadQueue.length > 0 && !isUploadCancelled) {
@@ -1609,7 +1609,7 @@
             showUploadProgressUI(0, totalToDelete, 'Fast batch removal...', 'Deleting Study Material...', true);
 
             // Process in fast chunks of 50 so UI updates smoothly and user can click "Cancel" anytime
-            const CHUNK_SIZE = 50;
+            const CHUNK_SIZE = 400; // Stay below Firestore's 500-operation batch limit while reducing requests.
 
             for (let i = 0; i < idsToDelete.length; i += CHUNK_SIZE) {
                 if (isDeleteCancelled) break;
