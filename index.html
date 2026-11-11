@@ -1,0 +1,2253 @@
+<!DOCTYPE html>
+<html lang="en"><head><script data-bard-client-injected="true">(function(firebaseConfig, initialAuthToken, appId) {
+        window.__firebase_config = firebaseConfig;
+        window.__initial_auth_token = initialAuthToken;
+        window.__app_id = appId;
+            })("\n{\n  \"apiKey\": \"AIzaSyCqyCcs2R2e7AegGjvFAwG98wlamtbHvZY\",\n  \"authDomain\": \"bard-frontend.firebaseapp.com\",\n  \"projectId\": \"bard-frontend\",\n  \"storageBucket\": \"bard-frontend.firebasestorage.app\",\n  \"messagingSenderId\": \"175205271074\",\n  \"appId\": \"1:175205271074:web:2b7bd4d34d33bf38e6ec7b\"\n}\n","eyJhbGciOiJSUzI1NiIsImtpZCI6IjExNjRiNzdiNDMzZDdhMDAyMWI4NjE4YjhjYTU3ZTMyZGI5MWUxMTMiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiJmaXJlYmFzZS1hZG1pbnNkay1mYnN2Y0BiYXJkLWZyb250ZW5kLmlhbS5nc2VydmljZWFjY291bnQuY29tIiwiYXVkIjoiaHR0cHM6Ly9pZGVudGl0eXRvb2xraXQuZ29vZ2xlYXBpcy5jb20vZ29vZ2xlLmlkZW50aXR5LmlkZW50aXR5dG9vbGtpdC52MS5JZGVudGl0eVRvb2xraXQiLCJ1aWQiOiIxNTQ5NzgzODY2NjQ1OTc2MTAwNSIsImlzcyI6ImZpcmViYXNlLWFkbWluc2RrLWZic3ZjQGJhcmQtZnJvbnRlbmQuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLCJjbGFpbXMiOnsiYXBwSWQiOiJjX2NiM2QwZDkzNzUxNDI0NjRfaW5kZXguaHRtbC04MDAifSwiZXhwIjoxNzk0NDA1ODk4LCJpYXQiOjE3OTQ0MDIyOTgsImFsZyI6IlJTMjU2In0.eta13AjVPkeRzGV1zxAEj3XFD2xegm07bEOGyEwFGNIKAMWWInoi-E6Q7sD4KAuvVwsz3QkYWcZwmI5OrCImUGG7uXiExDNevkHY4hojXNvlE8f3Ol988Qt0vZ6mwrwP4GnKkk4HY5_BaTTSjHi3sE2nOdeH8iqWw8vRoYEAaVs7ligo5fvUd2rx6pQ2v-oXgteC2Nyr8b8AyZTTab77qXgFUSaKiZbhJvfJD_w_635sErQhxKdNhlC5wkz5bvs-sRTn5HZbXT8YaMVwFGN72xr3tsi_auRVZ4vOz-pfPHTVA6q5mqbDm851pxMDxVeJHC78Sa1sPHo9kLxYADeP5g","c_cb3d0d9375142464_index.html-800")</script><script data-bard-client-injected="true">
+  document.addEventListener('input', (event) => {
+    if (event.target && (event.target.isContentEditable || event.target.hasAttribute('contenteditable'))) {
+      const clonedDoc = document.cloneNode(true);
+      const injectedScripts = clonedDoc.querySelectorAll('[data-bard-client-injected="true"]');
+      injectedScripts.forEach(el => el.remove());
+      window.parent.postMessage({
+        type: 'inlineEdit',
+        html: '<!DOCTYPE html>\n' + clonedDoc.documentElement.outerHTML
+      }, '*');
+    }
+  });
+</script><script data-bard-client-injected="true">(function(){'use strict';window.addEventListener("message",a=>{a.data&&a.data.type==="SUPPLEMENTAL_DATA_UPDATE"&&window.dispatchEvent(new CustomEvent("supplementaldataupdate",{detail:a.data.data}))});}).call(this);
+</script><script data-bard-client-injected="true">(function() {
+  const SCROLL_KEYS = new Set([
+    'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+    ' ', 'Spacebar', 'PageUp', 'PageDown', 'Home', 'End',
+  ]);
+  const HORIZONTAL_KEYS = new Set(['ArrowLeft', 'ArrowRight']);
+
+  function isTextEntryTarget(target) {
+    if (!target) return false;
+    const tagName = target.tagName;
+    return tagName === 'INPUT' || tagName === 'TEXTAREA' ||
+        tagName === 'SELECT' || target.isContentEditable === true;
+  }
+
+  // An element absorbs the key only if it both overflows on the axis being
+  // scrolled and is configured to scroll on that axis. The cheap dimension
+  // test runs first because getComputedStyle forces a style recalc, and this
+  // runs on every keypress. Each axis is read from its own longhand: the
+  // 'overflow' shorthand serializes as two values when the axes differ, which
+  // is the common 'overflow-x: hidden; overflow-y: auto' pane.
+  function canScroll(node, horizontal) {
+    const overflows = horizontal ? node.scrollWidth > node.clientWidth
+                                 : node.scrollHeight > node.clientHeight;
+    if (!overflows) return false;
+    const style = window.getComputedStyle(node);
+    const overflow = horizontal ? style.overflowX : style.overflowY;
+    return overflow === 'auto' || overflow === 'scroll';
+  }
+
+  // Walks up from the event target so nested scrollers keep their behavior.
+  // <body> is included because pages that pin the root height make it the
+  // scroll container.
+  function hasScrollableAncestor(target, horizontal) {
+    let node = target;
+    while (node && node !== document.documentElement) {
+      if (canScroll(node, horizontal)) return true;
+      node = node.parentElement;
+    }
+    return false;
+  }
+
+  function rootCanScroll(horizontal) {
+    const scroller = document.scrollingElement || document.documentElement;
+    if (!scroller) return false;
+    // Tolerate a pixel of rounding so subpixel layouts do not look scrollable.
+    return horizontal ? scroller.scrollWidth > window.innerWidth + 1
+                      : scroller.scrollHeight > window.innerHeight + 1;
+  }
+
+  window.addEventListener('keydown', function(event) {
+    if (!SCROLL_KEYS.has(event.key)) return;
+    if (event.defaultPrevented) return;
+    // Alt and Meta turn arrows into browser history navigation, and Ctrl is
+    // reserved for shortcuts, so none of them are scroll intent.
+    if (event.altKey || event.metaKey || event.ctrlKey) return;
+
+    const target = event.target;
+    if (isTextEntryTarget(target)) return;
+
+    // Anything that can still absorb the scroll gets to keep it.
+    const horizontal = HORIZONTAL_KEYS.has(event.key);
+    if (rootCanScroll(horizontal)) return;
+    if (hasScrollableAncestor(target, horizontal)) return;
+
+    event.preventDefault();
+  }, {capture: true, passive: false});
+})();</script><script data-bard-client-injected="true">(function() {
+  // Ensure this script is executed only once
+  if (window.firebaseAuthBridgeScriptLoaded) {
+    return;
+  }
+  window.firebaseAuthBridgeScriptLoaded = true;
+
+  let nextTokenPromiseId = 0;
+
+  // Stores { resolve, reject } for ongoing token requests
+  const pendingTokenPromises = {};
+
+  // Listen for messages from the Host Application
+  window.addEventListener('message', function(event) {
+
+    const messageData = event.data;
+
+  if (messageData && messageData.type === 'RESOLVE_NEW_FIREBASE_TOKEN') {
+      const { success, token, error, promiseId } = messageData ?? {};
+      if (pendingTokenPromises[promiseId]) {
+        if (success) {
+          pendingTokenPromises[promiseId].resolve(token);
+        } else {
+          pendingTokenPromises[promiseId].reject(new Error(error || 'Token refresh failed from host.'));
+        }
+        delete pendingTokenPromises[promiseId];
+      }
+    }
+  });
+
+  // Expose a function for the Generated App to request a new Firebase token
+  window.requestNewFirebaseToken = function() {
+    const currentPromiseId = nextTokenPromiseId++;
+    const promise = new Promise((resolve, reject) => {
+      pendingTokenPromises[currentPromiseId] = { resolve, reject };
+    });
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'REQUEST_NEW_FIREBASE_TOKEN',
+        promiseId: currentPromiseId
+      }, '*');
+    } else {
+      pendingTokenPromises[currentPromiseId].reject(new Error('No parent window to request token from.'));
+      delete pendingTokenPromises[currentPromiseId];
+    }
+    return promise;
+  };
+})();</script><script data-bard-client-injected="true">
+let realOriginalGetUserMedia = null;
+if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+  realOriginalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+}
+
+(function() {
+  if (navigator.mediaDevices && navigator.mediaDevices.__proto__) {
+    try {
+      Object.defineProperty(navigator.mediaDevices.__proto__, 'getUserMedia', {
+        get: function() {
+          return undefined; // Or throw an error
+        },
+        configurable: false
+      });
+    } catch (error) {
+      console.error("Error defining prototype getter:", error);
+    }
+  }
+})();
+
+(function() {
+  const pendingMediaResolvers = {};
+  let nextMediaPromiseId = 0;
+
+  function requestMediaPermissions(constraints) {
+    const mediaPromiseId = nextMediaPromiseId++;
+    const promise = new Promise((resolve, reject) => {
+      pendingMediaResolvers[mediaPromiseId] = (granted) => {
+        delete pendingMediaResolvers[mediaPromiseId];
+        resolve(granted);
+      };
+    });
+
+    window.parent.postMessage({
+      type: 'requestMediaPermission',
+      constraints: constraints,
+      promiseId: mediaPromiseId,
+    }, '*');
+
+    return promise;
+  }
+
+  let originalGetUserMedia = realOriginalGetUserMedia;
+
+  function interceptGetUserMedia() {
+    if (navigator.mediaDevices) {
+      Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
+        value: function(constraints) {
+          return requestMediaPermissions(constraints).then((granted) => {
+            if (granted) {
+              if (originalGetUserMedia) {
+                return originalGetUserMedia(constraints);
+              } else {
+                throw new Error("Original getUserMedia not available.");
+              }
+            } else {
+              throw new DOMException('Permission denied', 'NotAllowedError');
+            }
+          });
+        },
+        writable: false,
+        configurable: false
+      });
+    }
+  }
+
+  interceptGetUserMedia();
+
+  const observer = new MutationObserver(function(mutationsList, observer) {
+    for (const mutation of mutationsList) {
+      if (mutation.type === 'reconfigured' && mutation.name === 'getUserMedia' && mutation.object === navigator.mediaDevices) {
+        interceptGetUserMedia();
+      } else if (mutation.type === 'attributes' && mutation.attributeName === 'getUserMedia' && mutation.target === navigator.mediaDevices) {
+        interceptGetUserMedia();
+      } else if (mutation.type === 'childList' && mutation.addedNodes) {
+        mutation.addedNodes.forEach(node => {
+          if (node === navigator.mediaDevices) {
+            interceptGetUserMedia();
+          }
+        });
+      }
+    }
+  });
+
+  function interceptSpeechRecognition() {
+    if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+      return;
+    }
+
+    const OriginalSpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    const SpeechRecognitionWrapper = function(...args) {
+      const recognizer = new OriginalSpeechRecognition(...args);
+      const originalStart = recognizer.start.bind(recognizer);
+
+      recognizer.start = function() {
+        requestMediaPermissions({ audio: true }).then(granted => {
+          if (granted) {
+            originalStart();
+          } else {
+            const errorEvent = new SpeechRecognitionErrorEvent('error');
+            errorEvent.error = 'not-allowed'; // This is the standard error for permission denial.
+            recognizer.dispatchEvent(errorEvent);
+          }
+        });
+      };
+
+      return recognizer;
+    };
+
+    SpeechRecognitionWrapper.prototype = OriginalSpeechRecognition.prototype;
+    SpeechRecognitionWrapper.prototype.constructor = SpeechRecognitionWrapper;
+
+    if (window.SpeechRecognition) {
+      window.SpeechRecognition = SpeechRecognitionWrapper;
+    }
+    if (window.webkitSpeechRecognition) {
+      window.webkitSpeechRecognition = SpeechRecognitionWrapper;
+    }
+  }
+
+  interceptSpeechRecognition();
+
+  window.addEventListener('message', function(event) {
+    if (event.data) {
+      if (event.data.type === 'resolveMediaPermission') {
+        const { promiseId, granted } = event.data;
+        if (pendingMediaResolvers[promiseId]) {
+          pendingMediaResolvers[promiseId](granted);
+        }
+      }
+    }
+  });
+
+})();</script><script ws-interception-config="{&quot;parentOrigin&quot;:&quot;https://gemini.google.com&quot;,&quot;proxiedDomains&quot;:[]}" data-bard-client-injected="true">(function(){'use strict';var u=typeof Object.defineProperties=="function"?Object.defineProperty:function(b,d,e){if(b==Array.prototype||b==Object.prototype)return b;b[d]=e.value;return b};function v(b){b=["object"==typeof globalThis&&globalThis,b,"object"==typeof window&&window,"object"==typeof self&&self,"object"==typeof global&&global];for(var d=0;d<b.length;++d){var e=b[d];if(e&&e.Math==Math)return e}throw Error("Cannot find global object");}var w=v(this);
+function y(b,d){if(d)a:{var e=w;b=b.split(".");for(var h=0;h<b.length-1;h++){var k=b[h];if(!(k in e))break a;e=e[k]}b=b[b.length-1];h=e[b];d=d(h);d!=h&&d!=null&&u(e,b,{configurable:!0,writable:!0,value:d})}}function z(b){function d(h){return b.next(h)}function e(h){return b.throw(h)}return new Promise(function(h,k){function m(n){n.done?h(n.value):Promise.resolve(n.value).then(d,e).then(m,k)}m(b.next())})}y("globalThis",function(b){return b||w});/*
+
+ Copyright The Closure Library Authors.
+ SPDX-License-Identifier: Apache-2.0
+*/
+function A(b,d){function e(){}e.prototype=d.prototype;b.j=d.prototype;b.prototype=new e;b.prototype.constructor=b;b.h=function(h,k,m){for(var n=Array(arguments.length-2),p=2;p<arguments.length;p++)n[p-2]=arguments[p];return d.prototype[k].apply(h,n)}};function B(b,d,e="*"){function h(a){if(typeof a==="string")return F.encode(a).buffer;if(a instanceof ArrayBuffer)return a.slice(0);if(ArrayBuffer.isView(a))return a.buffer.slice(a.byteOffset,a.byteOffset+a.byteLength);throw Error("Invalid data type");}function k(a){a=h(a);var f={type:"send",data:new Uint8Array(a)},g;(g=r)==null||g.postMessage(f,[a])}function m(){if(!r)throw Error("Data port not captured yet.");r.onmessage=a=>{if(a.data.type==="message"){a=new MessageEvent("message",{data:G.decode(a.data.data)});
+let f;(f=c.onmessage)==null||f.call(c,a);c.dispatchEvent(a)}}}function n(){if(!t)throw Error("Control port not captured yet.");t.onmessage=a=>{switch(a.data.type){case "open":l=1;var f=new Event("open"),g;(g=c.onopen)==null||g.call(c,f);c.dispatchEvent(f);q.forEach(H=>{k(H)});q=[];break;case "close":g=a.data;l=3;g=new CloseEvent("close",{code:g.code,reason:g.reason,wasClean:g.wasClean});(f=c.onclose)==null||f.call(c,g);c.dispatchEvent(g);break;case "error":l=3;f=new Event("error");let x;(x=c.onerror)==
+null||x.call(c,f);c.dispatchEvent(f)}}}function p(a){return z(function*(){var f=new MessageChannel;t=f.port1;var g=new MessageChannel;r=g.port1;n();m();window.parent.postMessage({type:"websocket_open",portOrdering:["control","data"],url:b,protocols:a||[],connectionId:I},e,[f.port2,g.port2])}())}var c=Reflect.construct(EventTarget,[],new.target);c.CONNECTING=0;c.OPEN=1;c.CLOSING=2;c.CLOSED=3;c.url=b;c.binaryType="arraybuffer";c.protocol="";c.i="";var l=0,t=null,r=null,q=[],F=new TextEncoder,G=new TextDecoder;
+c.onopen=null;c.onmessage=null;c.onclose=null;c.onerror=null;Object.defineProperty(c,"readyState",{get:()=>l,enumerable:!0,configurable:!0});Object.defineProperty(c,"bufferedAmount",{get:()=>{var a=0;q.forEach(f=>{a+=typeof f==="string"?f.length:f.byteLength});return a},enumerable:!0,configurable:!0});var I=function(){var a;return((a=globalThis.crypto)==null?0:a.randomUUID)?globalThis.crypto.randomUUID():"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,f=>{var g=Math.random()*16|0;return(f===
+"x"?g:g&3|8).toString(16)})}();c.send=a=>{if(l===1)a instanceof Blob?a.arrayBuffer().then(f=>{k(f)}):k(a);else if(l===0)if(typeof a==="string")q.push(a);else if(a instanceof ArrayBuffer||ArrayBuffer.isView(a))q.push(h(a));else throw Error("Sending Blob is not supported before the connection is open.");else console.debug("WebSocket send called in CLOSING or CLOSED state; ignored.")};c.close=(a=1E3,f="")=>{if(l!==2&&l!==3){l=2;a={type:"close",code:a,reason:f,wasClean:a===1E3};var g;(g=t)==null||g.postMessage(a)}};
+Promise.resolve().then(()=>p(d));return c}A(B,EventTarget);var C=document.currentScript,D=C==null?void 0:C.getAttribute("ws-interception-config");if(!D)throw Error("WebSocket Interceptor: Missing ws-interception-config attribute in the script tag.");var E=JSON.parse(D);if(!E.parentOrigin||typeof E.parentOrigin!=="string")throw Error("WebSocket Interceptor: Invalid parentOrigin in ws-interception-config");
+(function(b){var d=Object.getOwnPropertyDescriptor(window,"WebSocket");if(!d||d.writable||d.configurable)d=Object.assign(function(e,h){try{let k=(new URL(e)).hostname;if(b.proxiedDomains.some(m=>k===m||k.endsWith(`.${m}`)))return new B(e,h,b.parentOrigin)}catch(k){throw window.parent.postMessage({type:"websocket_blocked",url:e,reason:"blocked_invalid_url"},b.parentOrigin),new DOMException(`WebSocket connection to '${e}' is not allowed in Canvas.`,"SecurityError");}window.parent.postMessage({type:"websocket_blocked",
+url:e,reason:"blocked_domain_not_allowlisted"},b.parentOrigin);throw new DOMException(`WebSocket connection to '${e}' is not allowed in Canvas.`,"SecurityError");},{CONNECTING:0,OPEN:1,CLOSING:2,CLOSED:3}),Object.defineProperty(window,"WebSocket",{value:d,writable:!1,configurable:!1})})({proxiedDomains:E.proxiedDomains||[],parentOrigin:E.parentOrigin});}).call(this);
+</script><script data-bard-client-injected="true">(function() {
+  function normalizeSlug(str) {
+    try {
+      return str
+        .trim()
+        .toLowerCase()
+        .replace(/[^p{L}p{N}s_-]/gu, '')
+        .replace(/s+/g, '-');
+    } catch (e) {
+      return str
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9s_-]/g, '')
+        .replace(/s+/g, '-');
+    }
+  }
+
+  function findTargetElement(hash) {
+    if (!hash || hash === '#') {
+      return null;
+    }
+    const rawId = hash.startsWith('#') ? hash.slice(1) : hash;
+    let decodedId = rawId;
+    try {
+      decodedId = decodeURIComponent(rawId);
+    } catch (e) {
+      // Ignore URI malformed errors.
+    }
+
+    // 1. Direct ID match (raw and decoded).
+    let target = document.getElementById(rawId) || document.getElementById(decodedId);
+    if (target) {
+      return target;
+    }
+
+    // 2. Name attribute match (<a name="...">).
+    try {
+      if (typeof CSS !== 'undefined' && CSS.escape) {
+        target =
+          document.querySelector('[name="' + CSS.escape(rawId) + '"]') ||
+          document.querySelector('[name="' + CSS.escape(decodedId) + '"]');
+      } else {
+        const namedElements = document.getElementsByName(rawId);
+        if (namedElements && namedElements.length > 0) {
+          return namedElements[0];
+        }
+      }
+    } catch (e) {
+      // Ignore querySelector syntax errors.
+    }
+    if (target) {
+      return target;
+    }
+
+    // 3. Match heading text by slug (for Markdown TOCs where headings lack explicit IDs).
+    const targetSlug = normalizeSlug(decodedId);
+    if (targetSlug) {
+      for (const heading of document.querySelectorAll('h1, h2, h3, h4, h5, h6')) {
+        if (normalizeSlug(heading.textContent || '') === targetSlug) {
+          return heading;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  document.addEventListener('click', function(event) {
+    const target = event.target;
+    const anchor = target && typeof target.closest === 'function' ? target.closest('a') : null;
+    if (!anchor) {
+      return;
+    }
+
+    const href = anchor.getAttribute('href');
+    if (
+      !href ||
+      href.trim().toLowerCase().startsWith('javascript:') ||
+      anchor.hasAttribute('download')
+    ) {
+      return;
+    }
+
+    // Check if the link is an in-page hash / anchor link.
+    if (href.startsWith('#')) {
+      event.preventDefault();
+      const targetElement = findTargetElement(href);
+      if (targetElement) {
+        targetElement.scrollIntoView({behavior: 'smooth', block: 'start'});
+      }
+      return;
+    }
+
+    // Check if the URL has the same origin/pathname but with a hash.
+    try {
+      const url = new URL(anchor.href, window.location.href);
+      if (
+        url.hash &&
+        url.origin === window.location.origin &&
+        url.pathname === window.location.pathname
+      ) {
+        event.preventDefault();
+        const targetElement = findTargetElement(url.hash);
+        if (targetElement) {
+          targetElement.scrollIntoView({behavior: 'smooth', block: 'start'});
+        }
+        return;
+      }
+    } catch (e) {
+      // Fall through if URL parsing fails.
+    }
+
+    // For all external or full navigation links, prevent iframe-level navigation
+    // (which breaks in AGSA WebView or sandboxed iframes) and ensure they open
+    // safely in a new tab/window.
+    if (anchor.target !== '_blank') {
+      event.preventDefault();
+      window.open(anchor.href, '_blank', 'noopener,noreferrer');
+    }
+  }, {capture: true});
+})();</script><script data-bard-client-injected="true">(function(){'use strict';function a(){window.parent.postMessage({type:"interaction"},"*")}window.addEventListener("click",a,{capture:!0,passive:!0});window.addEventListener("touchstart",a,{capture:!0,passive:!0});window.addEventListener("keydown",a,{capture:!0,passive:!0});}).call(this);
+</script><script data-bard-client-injected="true">(function() {
+  const originalConsoleLog = console.log;
+  const originalConsoleError = console.error;
+
+    /**
+   * Normalizes an error event or a promise rejection reason into a structured error object.
+   * @param {*} errorEventOrReason The error object or reason.
+   * @return {object} Structured error data { message, name, stack }.
+   */
+  function getErrorObject(errorEventOrReason) {
+    if (errorEventOrReason instanceof Error) {
+      return {
+        message: errorEventOrReason.message,
+        name: errorEventOrReason.name,
+        stack: errorEventOrReason.stack,
+      };
+    }
+    // Fallback for non-Error objects.
+    try {
+      return {
+        message: JSON.stringify(errorEventOrReason),
+        name: 'UnknownErrorType',
+        stack: null,
+      };
+    } catch (e) {
+      return {
+        message: String(errorEventOrReason),
+        name: 'UnknownErrorTypeNonStringifiable',
+        stack: null,
+      };
+    }
+  }
+
+  /**
+   * Converts an array of arguments (from log/error) into a single string.
+   * Handles Error objects specially to include their message and stack.
+   * @param {Array<*>} args - Arguments passed to console methods.
+   * @return {string} A string representation of the arguments.
+   */
+  function stringifyArgs(args) {
+    return args
+      .map((arg) => {
+        if (arg instanceof Error) {
+          const {message, stack} = arg;
+          return `Error: ${message}${stack ? ('\nStack: ' + stack) : ''}`;
+        }
+        if (typeof arg === 'object' && arg !== null) {
+          try {
+            return JSON.stringify(arg);
+          } catch (error) {
+            return '[Circular Object]';
+          }
+        } else {
+          return String(arg);
+        }
+      })
+      .join(' ');
+  }
+
+  console.log = function(...args) {
+    const logString = stringifyArgs(args);
+    window.parent.postMessage({ type: 'log', message: logString }, '*');
+    originalConsoleLog.apply(console, args);
+  };
+
+  console.error = function(...args) {
+    let errorData;
+    if (args.length > 0 && args[0] instanceof Error) {
+      const err = args[0];
+      // If the first arg is an Error, capture its details.
+      errorData = {
+        type: 'error',
+        source: 'CONSOLE_ERROR',
+        ...getErrorObject(err),
+        rawArgsString: stringifyArgs(args.slice(1)),
+        timestamp: new Date().toISOString(),
+      };
+    } else {
+      // If not an Error object, treat all args as a general error message.
+      errorData = {
+        type: 'error',
+        source: 'CONSOLE_ERROR',
+        message: stringifyArgs(args),
+        name: 'ConsoleLoggedError',
+        stack: null,
+        timestamp: new Date().toISOString(),
+      };
+    }
+    window.parent.postMessage(errorData, '*');
+    originalConsoleError.apply(console, args);
+  };
+
+  // Listen for global unhandled synchronous errors.
+  window.addEventListener('error', function(event) {
+    const errorDetails = event.error ? getErrorObject(event.error) : {
+      message: event.message,
+      name: 'GlobalError',
+      stack: null,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+    };
+
+    window.parent.postMessage({
+      type: 'error',
+      source: 'global',
+      ...errorDetails,
+      message: errorDetails.message || event.message,
+      timestamp: new Date().toISOString(),
+    }, '*');
+  });
+
+  // Listen for unhandled promise rejections (asynchronous errors).
+  window.addEventListener('unhandledrejection', function(event) {
+    const errorDetails = getErrorObject(event.reason);
+
+    window.parent.postMessage({
+      type: 'error',
+      source: 'unhandledrejection',
+      ...errorDetails,
+      message: errorDetails.message || 'Unhandled Promise Rejection',
+      timestamp: new Date().toISOString(),
+    }, '*');
+  });
+
+})();</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Material Gallery</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 50%, #e0f2fe 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Smooth popup entrance animation */
+        @keyframes popupEnter {
+            0% {
+                opacity: 0;
+                transform: translateY(24px) scale(0.96);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .animate-popup {
+            animation: popupEnter 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Card fade-in animation */
+        @keyframes cardFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .gallery-card {
+            animation: cardFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Custom subtle scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(241, 245, 249, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Smooth image transform in lightbox */
+        #lightbox-img {
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: transform;
+        }
+        #lightbox-img.dragging {
+            transition: none;
+            cursor: grabbing !important;
+        }
+    </style>
+<style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:Inter, sans-serif;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.pointer-events-none{pointer-events:none}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.inset-0{inset:0px}.-bottom-24{bottom:-6rem}.-left-24{left:-6rem}.-right-24{right:-6rem}.-top-24{top:-6rem}.bottom-6{bottom:1.5rem}.left-1\/2{left:50%}.left-3{left:0.75rem}.left-6{left:1.5rem}.right-3{right:0.75rem}.right-6{right:1.5rem}.z-20{z-index:20}.z-30{z-index:30}.z-40{z-index:40}.z-50{z-index:50}.mx-0\.5{margin-left:0.125rem;margin-right:0.125rem}.mx-auto{margin-left:auto;margin-right:auto}.my-8{margin-top:2rem;margin-bottom:2rem}.mb-1{margin-bottom:0.25rem}.mb-1\.5{margin-bottom:0.375rem}.mb-3{margin-bottom:0.75rem}.mb-4{margin-bottom:1rem}.mb-5{margin-bottom:1.25rem}.mb-6{margin-bottom:1.5rem}.mb-8{margin-bottom:2rem}.ml-auto{margin-left:auto}.mt-2{margin-top:0.5rem}.block{display:block}.flex{display:flex}.inline-flex{display:inline-flex}.grid{display:grid}.hidden{display:none}.h-10{height:2.5rem}.h-11{height:2.75rem}.h-12{height:3rem}.h-14{height:3.5rem}.h-16{height:4rem}.h-2{height:0.5rem}.h-20{height:5rem}.h-4{height:1rem}.h-5{height:1.25rem}.h-6{height:1.5rem}.h-7{height:1.75rem}.h-8{height:2rem}.h-96{height:24rem}.h-\[28rem\]{height:28rem}.h-full{height:100%}.max-h-\[80vh\]{max-height:80vh}.max-h-\[82vh\]{max-height:82vh}.min-h-\[75vh\]{min-height:75vh}.min-h-screen{min-height:100vh}.w-10{width:2.5rem}.w-11{width:2.75rem}.w-12{width:3rem}.w-14{width:3.5rem}.w-16{width:4rem}.w-2{width:0.5rem}.w-20{width:5rem}.w-4{width:1rem}.w-5{width:1.25rem}.w-6{width:1.5rem}.w-7{width:1.75rem}.w-8{width:2rem}.w-96{width:24rem}.w-\[28rem\]{width:28rem}.w-full{width:100%}.w-px{width:1px}.min-w-\[3\.2rem\]{min-width:3.2rem}.max-w-5xl{max-width:64rem}.max-w-7xl{max-width:80rem}.max-w-\[90vw\]{max-width:90vw}.max-w-lg{max-width:32rem}.max-w-md{max-width:28rem}.max-w-sm{max-width:24rem}.flex-1{flex:1 1 0%}.shrink-0{flex-shrink:0}.-translate-x-1\/2{--tw-translate-x:-50%;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.translate-y-3{--tw-translate-y:0.75rem;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.translate-y-0{--tw-translate-y:0px;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}@keyframes bounce{0%, 100%{transform:translateY(-25%);animation-timing-function:cubic-bezier(0.8,0,1,1)}50%{transform:none;animation-timing-function:cubic-bezier(0,0,0.2,1)}}.animate-bounce{animation:bounce 1s infinite}@keyframes spin{to{transform:rotate(360deg)}}.animate-spin{animation:spin 1s linear infinite}.cursor-grab{cursor:grab}.cursor-pointer{cursor:pointer}.select-none{-webkit-user-select:none;user-select:none}.grid-cols-1{grid-template-columns:repeat(1, minmax(0, 1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-start{align-items:flex-start}.items-center{align-items:center}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-1\.5{gap:0.375rem}.gap-2{gap:0.5rem}.gap-2\.5{gap:0.625rem}.gap-3{gap:0.75rem}.gap-4{gap:1rem}.gap-5{gap:1.25rem}.space-y-1\.5 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.375rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.375rem * var(--tw-space-y-reverse))}.space-y-4 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1rem * var(--tw-space-y-reverse))}.overflow-hidden{overflow:hidden}.overflow-y-auto{overflow-y:auto}.rounded{border-radius:0.25rem}.rounded-2xl{border-radius:1rem}.rounded-3xl{border-radius:1.5rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:0.5rem}.rounded-xl{border-radius:0.75rem}.border{border-width:1px}.border-4{border-width:4px}.border-2{border-width:2px}.border-dashed{border-style:dashed}.border-blue-100{--tw-border-opacity:1;border-color:rgb(219 234 254 / var(--tw-border-opacity, 1))}.border-blue-100\/80{border-color:rgb(219 234 254 / 0.8)}.border-blue-200{--tw-border-opacity:1;border-color:rgb(191 219 254 / var(--tw-border-opacity, 1))}.border-blue-200\/60{border-color:rgb(191 219 254 / 0.6)}.border-blue-500{--tw-border-opacity:1;border-color:rgb(59 130 246 / var(--tw-border-opacity, 1))}.border-slate-200{--tw-border-opacity:1;border-color:rgb(226 232 240 / var(--tw-border-opacity, 1))}.border-white\/10{border-color:rgb(255 255 255 / 0.1)}.border-white\/15{border-color:rgb(255 255 255 / 0.15)}.border-blue-300{--tw-border-opacity:1;border-color:rgb(147 197 253 / var(--tw-border-opacity, 1))}.border-t-blue-600{--tw-border-opacity:1;border-top-color:rgb(37 99 235 / var(--tw-border-opacity, 1))}.bg-blue-200\/40{background-color:rgb(191 219 254 / 0.4)}.bg-blue-50{--tw-bg-opacity:1;background-color:rgb(239 246 255 / var(--tw-bg-opacity, 1))}.bg-blue-50\/70{background-color:rgb(239 246 255 / 0.7)}.bg-blue-600{--tw-bg-opacity:1;background-color:rgb(37 99 235 / var(--tw-bg-opacity, 1))}.bg-blue-600\/15{background-color:rgb(37 99 235 / 0.15)}.bg-emerald-500{--tw-bg-opacity:1;background-color:rgb(16 185 129 / var(--tw-bg-opacity, 1))}.bg-sky-200\/50{background-color:rgb(186 230 253 / 0.5)}.bg-slate-100{--tw-bg-opacity:1;background-color:rgb(241 245 249 / var(--tw-bg-opacity, 1))}.bg-slate-900\/40{background-color:rgb(15 23 42 / 0.4)}.bg-slate-900\/45{background-color:rgb(15 23 42 / 0.45)}.bg-slate-900\/90{background-color:rgb(15 23 42 / 0.9)}.bg-slate-950\/95{background-color:rgb(2 6 23 / 0.95)}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255 / var(--tw-bg-opacity, 1))}.bg-white\/10{background-color:rgb(255 255 255 / 0.1)}.bg-white\/20{background-color:rgb(255 255 255 / 0.2)}.bg-white\/80{background-color:rgb(255 255 255 / 0.8)}.bg-white\/85{background-color:rgb(255 255 255 / 0.85)}.bg-white\/95{background-color:rgb(255 255 255 / 0.95)}.bg-blue-50\/90{background-color:rgb(239 246 255 / 0.9)}.bg-gradient-to-b{background-image:linear-gradient(to bottom, var(--tw-gradient-stops))}.bg-gradient-to-br{background-image:linear-gradient(to bottom right, var(--tw-gradient-stops))}.bg-gradient-to-r{background-image:linear-gradient(to right, var(--tw-gradient-stops))}.bg-gradient-to-tr{background-image:linear-gradient(to top right, var(--tw-gradient-stops))}.from-blue-50{--tw-gradient-from:#eff6ff var(--tw-gradient-from-position);--tw-gradient-to:rgb(239 246 255 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.from-blue-600{--tw-gradient-from:#2563eb var(--tw-gradient-from-position);--tw-gradient-to:rgb(37 99 235 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.from-slate-950\/80{--tw-gradient-from:rgb(2 6 23 / 0.8) var(--tw-gradient-from-position);--tw-gradient-to:rgb(2 6 23 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.to-blue-100\/80{--tw-gradient-to:rgb(219 234 254 / 0.8) var(--tw-gradient-to-position)}.to-blue-500{--tw-gradient-to:#3b82f6 var(--tw-gradient-to-position)}.to-transparent{--tw-gradient-to:transparent var(--tw-gradient-to-position)}.object-contain{object-fit:contain}.p-1\.5{padding:0.375rem}.p-10{padding:2.5rem}.p-2{padding:0.5rem}.p-4{padding:1rem}.p-6{padding:1.5rem}.p-8{padding:2rem}.px-1{padding-left:0.25rem;padding-right:0.25rem}.px-2{padding-left:0.5rem;padding-right:0.5rem}.px-3\.5{padding-left:0.875rem;padding-right:0.875rem}.px-4{padding-left:1rem;padding-right:1rem}.px-5{padding-left:1.25rem;padding-right:1.25rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-1{padding-top:0.25rem;padding-bottom:0.25rem}.py-1\.5{padding-top:0.375rem;padding-bottom:0.375rem}.py-2\.5{padding-top:0.625rem;padding-bottom:0.625rem}.py-3{padding-top:0.75rem;padding-bottom:0.75rem}.py-4{padding-top:1rem;padding-bottom:1rem}.py-8{padding-top:2rem;padding-bottom:2rem}.pb-28{padding-bottom:7rem}.pt-1{padding-top:0.25rem}.text-left{text-align:left}.text-center{text-align:center}.font-mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}.text-2xl{font-size:1.5rem;line-height:2rem}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:0.75rem;line-height:1rem}.font-bold{font-weight:700}.font-medium{font-weight:500}.font-semibold{font-weight:600}.uppercase{text-transform:uppercase}.leading-relaxed{line-height:1.625}.tracking-tight{letter-spacing:-0.025em}.tracking-wide{letter-spacing:0.025em}.tracking-wider{letter-spacing:0.05em}.text-blue-200{--tw-text-opacity:1;color:rgb(191 219 254 / var(--tw-text-opacity, 1))}.text-blue-500{--tw-text-opacity:1;color:rgb(59 130 246 / var(--tw-text-opacity, 1))}.text-blue-600{--tw-text-opacity:1;color:rgb(37 99 235 / var(--tw-text-opacity, 1))}.text-blue-700{--tw-text-opacity:1;color:rgb(29 78 216 / var(--tw-text-opacity, 1))}.text-blue-900{--tw-text-opacity:1;color:rgb(30 58 138 / var(--tw-text-opacity, 1))}.text-slate-400{--tw-text-opacity:1;color:rgb(148 163 184 / var(--tw-text-opacity, 1))}.text-slate-500{--tw-text-opacity:1;color:rgb(100 116 139 / var(--tw-text-opacity, 1))}.text-slate-600{--tw-text-opacity:1;color:rgb(71 85 105 / var(--tw-text-opacity, 1))}.text-slate-700{--tw-text-opacity:1;color:rgb(51 65 85 / var(--tw-text-opacity, 1))}.text-slate-800{--tw-text-opacity:1;color:rgb(30 41 59 / var(--tw-text-opacity, 1))}.text-slate-900{--tw-text-opacity:1;color:rgb(15 23 42 / var(--tw-text-opacity, 1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.text-white\/90{color:rgb(255 255 255 / 0.9)}.text-emerald-600{--tw-text-opacity:1;color:rgb(5 150 105 / var(--tw-text-opacity, 1))}.antialiased{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.opacity-0{opacity:0}.opacity-100{opacity:1}.shadow-2xl{--tw-shadow:0 25px 50px -12px rgb(0 0 0 / 0.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-\[0_10px_25px_-5px_rgba\(37\2c 99\2c 235\2c 0\.5\)\]{--tw-shadow:0 10px 25px -5px rgba(37,99,235,0.5);--tw-shadow-colored:0 10px 25px -5px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-\[0_24px_60px_-15px_rgba\(37\2c 99\2c 235\2c 0\.14\)\]{--tw-shadow:0 24px 60px -15px rgba(37,99,235,0.14);--tw-shadow-colored:0 24px 60px -15px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-inner{--tw-shadow:inset 0 2px 4px 0 rgb(0 0 0 / 0.05);--tw-shadow-colored:inset 0 2px 4px 0 var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-lg{--tw-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-md{--tw-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color), 0 2px 4px -2px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-sm{--tw-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-blue-500\/20{--tw-shadow-color:rgb(59 130 246 / 0.2);--tw-shadow:var(--tw-shadow-colored)}.shadow-blue-500\/25{--tw-shadow-color:rgb(59 130 246 / 0.25);--tw-shadow:var(--tw-shadow-colored)}.outline-none{outline:2px solid transparent;outline-offset:2px}.blur-3xl{--tw-blur:blur(64px);filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.backdrop-blur-md{--tw-backdrop-blur:blur(12px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.backdrop-blur-sm{--tw-backdrop-blur:blur(4px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.backdrop-blur-xl{--tw-backdrop-blur:blur(24px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition{transition-property:color, background-color, border-color, fill, stroke, opacity, box-shadow, transform, filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-colors{transition-property:color, background-color, border-color, fill, stroke, -webkit-text-decoration-color;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, -webkit-text-decoration-color;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-opacity{transition-property:opacity;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.duration-200{transition-duration:200ms}.duration-300{transition-duration:300ms}.duration-500{transition-duration:500ms}.ease-out{transition-timing-function:cubic-bezier(0, 0, 0.2, 1)}.selection\:bg-blue-500 *::selection{--tw-bg-opacity:1;background-color:rgb(59 130 246 / var(--tw-bg-opacity, 1))}.selection\:text-white *::selection{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.selection\:bg-blue-500::selection{--tw-bg-opacity:1;background-color:rgb(59 130 246 / var(--tw-bg-opacity, 1))}.selection\:text-white::selection{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.hover\:scale-105:hover{--tw-scale-x:1.05;--tw-scale-y:1.05;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.hover\:border-blue-500:hover{--tw-border-opacity:1;border-color:rgb(59 130 246 / var(--tw-border-opacity, 1))}.hover\:bg-blue-100:hover{--tw-bg-opacity:1;background-color:rgb(219 234 254 / var(--tw-bg-opacity, 1))}.hover\:bg-blue-50:hover{--tw-bg-opacity:1;background-color:rgb(239 246 255 / var(--tw-bg-opacity, 1))}.hover\:bg-blue-600:hover{--tw-bg-opacity:1;background-color:rgb(37 99 235 / var(--tw-bg-opacity, 1))}.hover\:bg-blue-600\/80:hover{background-color:rgb(37 99 235 / 0.8)}.hover\:bg-blue-700:hover{--tw-bg-opacity:1;background-color:rgb(29 78 216 / var(--tw-bg-opacity, 1))}.hover\:bg-red-500\/80:hover{background-color:rgb(239 68 68 / 0.8)}.hover\:bg-slate-100:hover{--tw-bg-opacity:1;background-color:rgb(241 245 249 / var(--tw-bg-opacity, 1))}.hover\:bg-slate-200:hover{--tw-bg-opacity:1;background-color:rgb(226 232 240 / var(--tw-bg-opacity, 1))}.hover\:bg-white:hover{--tw-bg-opacity:1;background-color:rgb(255 255 255 / var(--tw-bg-opacity, 1))}.hover\:bg-white\/10:hover{background-color:rgb(255 255 255 / 0.1)}.hover\:bg-white\/15:hover{background-color:rgb(255 255 255 / 0.15)}.hover\:from-blue-700:hover{--tw-gradient-from:#1d4ed8 var(--tw-gradient-from-position);--tw-gradient-to:rgb(29 78 216 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.hover\:to-blue-600:hover{--tw-gradient-to:#2563eb var(--tw-gradient-to-position)}.hover\:text-slate-600:hover{--tw-text-opacity:1;color:rgb(71 85 105 / var(--tw-text-opacity, 1))}.hover\:text-slate-800:hover{--tw-text-opacity:1;color:rgb(30 41 59 / var(--tw-text-opacity, 1))}.hover\:text-white:hover{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.hover\:shadow-\[0_15px_30px_-5px_rgba\(37\2c 99\2c 235\2c 0\.65\)\]:hover{--tw-shadow:0 15px 30px -5px rgba(37,99,235,0.65);--tw-shadow-colored:0 15px 30px -5px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.hover\:shadow-xl:hover{--tw-shadow:0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 20px 25px -5px var(--tw-shadow-color), 0 8px 10px -6px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.hover\:shadow-blue-500\/35:hover{--tw-shadow-color:rgb(59 130 246 / 0.35);--tw-shadow:var(--tw-shadow-colored)}.focus\:border-blue-500:focus{--tw-border-opacity:1;border-color:rgb(59 130 246 / var(--tw-border-opacity, 1))}.focus\:outline-none:focus{outline:2px solid transparent;outline-offset:2px}.focus\:ring-4:focus{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(4px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000)}.focus\:ring-blue-400\/40:focus{--tw-ring-color:rgb(96 165 250 / 0.4)}.focus\:ring-blue-500\/15:focus{--tw-ring-color:rgb(59 130 246 / 0.15)}.focus\:ring-blue-500\/30:focus{--tw-ring-color:rgb(59 130 246 / 0.3)}.active\:scale-95:active{--tw-scale-x:.95;--tw-scale-y:.95;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.active\:scale-\[0\.99\]:active{--tw-scale-x:0.99;--tw-scale-y:0.99;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}@media (min-width: 640px){.sm\:bottom-8{bottom:2rem}.sm\:left-6{left:1.5rem}.sm\:left-8{left:2rem}.sm\:right-6{right:1.5rem}.sm\:right-8{right:2rem}.sm\:h-10{height:2.5rem}.sm\:h-12{height:3rem}.sm\:h-16{height:4rem}.sm\:h-20{height:5rem}.sm\:h-8{height:2rem}.sm\:w-10{width:2.5rem}.sm\:w-12{width:3rem}.sm\:w-16{width:4rem}.sm\:w-20{width:5rem}.sm\:w-8{width:2rem}.sm\:grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.sm\:gap-2{gap:0.5rem}.sm\:gap-6{gap:1.5rem}.sm\:p-10{padding:2.5rem}.sm\:p-12{padding:3rem}.sm\:p-2\.5{padding:0.625rem}.sm\:p-6{padding:1.5rem}.sm\:p-8{padding:2rem}.sm\:px-6{padding-left:1.5rem;padding-right:1.5rem}.sm\:px-8{padding-left:2rem;padding-right:2rem}.sm\:py-12{padding-top:3rem;padding-bottom:3rem}.sm\:py-4{padding-top:1rem;padding-bottom:1rem}.sm\:text-3xl{font-size:1.875rem;line-height:2.25rem}.sm\:text-base{font-size:1rem;line-height:1.5rem}.sm\:text-sm{font-size:0.875rem;line-height:1.25rem}.sm\:text-xl{font-size:1.25rem;line-height:1.75rem}}@media (min-width: 768px){.md\:grid-cols-3{grid-template-columns:repeat(3, minmax(0, 1fr))}.md\:px-12{padding-left:3rem;padding-right:3rem}}@media (min-width: 1024px){.lg\:grid-cols-4{grid-template-columns:repeat(4, minmax(0, 1fr))}}</style></head>
+<body class="text-slate-800 antialiased relative selection:bg-blue-500 selection:text-white">
+
+    <!-- ========================================== -->
+    <!-- 1. FIRST SCREEN: WELCOME POPUP             -->
+    <!-- ========================================== -->
+    <div id="welcome-screen" class="fixed inset-0 z-30 flex items-center justify-center p-4 sm:p-6 transition-opacity duration-500 ease-out">
+        <!-- Ambient soft glowing background blobs -->
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+            <div class="absolute -top-24 -left-24 w-96 h-96 bg-blue-200/40 rounded-full blur-3xl"></div>
+            <div class="absolute -bottom-24 -right-24 w-[28rem] h-[28rem] bg-sky-200/50 rounded-full blur-3xl"></div>
+        </div>
+
+        <!-- Centered Popup Card -->
+        <div class="relative bg-white/95 backdrop-blur-xl border border-blue-100/80 rounded-3xl shadow-[0_24px_60px_-15px_rgba(37,99,235,0.14)] max-w-md w-full p-8 sm:p-12 text-center animate-popup">
+            <!-- Soft Blue Study Icon -->
+            <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100/80 border border-blue-200/60 flex items-center justify-center text-blue-600 shadow-inner">
+                <svg class="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"></path>
+                </svg>
+            </div>
+
+            <!-- Main Heading -->
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 mb-3">
+                OPEN STUDY MATERIAL
+            </h1>
+
+            <!-- Subtitle -->
+            <p class="text-slate-500 text-sm sm:text-base leading-relaxed mb-8">
+                Your personal collection of study notes and learning materials.
+            </p>
+
+            <!-- Large Action Button -->
+            <button id="open-gallery-btn" class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 active:scale-[0.99] text-white font-semibold text-base tracking-wide shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 transition-all duration-200 flex items-center justify-center gap-2.5 focus:outline-none focus:ring-4 focus:ring-blue-500/30">
+                <span>OPEN STUDY MATERIAL</span>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 2. SECOND SCREEN: CLEAN IMAGE GALLERY PAGE -->
+    <!-- ========================================== -->
+    <main id="gallery-screen" class="hidden min-h-screen w-full px-4 py-8 sm:px-8 sm:py-12 md:px-12 pb-28 opacity-0 transition-opacity duration-500 ease-out">
+        <div class="max-w-7xl mx-auto">
+            
+            <!-- Loading State while connecting to cloud -->
+            <div id="loading-state" class="min-h-[75vh] flex flex-col items-center justify-center text-center p-6 hidden">
+                <div class="w-12 h-12 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin mb-4"></div>
+                <p class="text-sm font-medium text-slate-500">Loading study material...</p>
+            </div>
+
+            <!-- Empty State Message (Shown ONLY when 0 images are uploaded) -->
+            <div id="empty-state" class="min-h-[75vh] flex flex-col items-center justify-center text-center p-6">
+                <div id="empty-dropzone" class="max-w-md w-full bg-white/80 backdrop-blur-md border border-blue-100 rounded-3xl p-10 sm:p-12 transition-all duration-300 shadow-sm">
+                    <div class="w-16 h-16 mx-auto mb-5 rounded-2xl bg-blue-50 text-blue-500 flex items-center justify-center transition-colors duration-200">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"></path>
+                        </svg>
+                    </div>
+                    <p class="text-lg sm:text-xl font-semibold text-slate-700 mb-1">
+                        No study material uploaded yet.
+                    </p>
+                    <p id="empty-owner-hint" class="text-xs sm:text-sm text-slate-400 mt-2 hidden">
+                        Click the <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white font-bold text-xs mx-0.5">+</span> button or drag &amp; drop images here
+                    </p>
+                </div>
+            </div>
+
+            <!-- Responsive Image Grid -->
+            <div id="gallery-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6"></div>
+
+        </div>
+
+        <!-- Bottom-Left Owner Controls Bar -->
+        <div class="fixed bottom-6 left-6 sm:bottom-8 sm:left-8 z-20 flex flex-wrap items-center gap-2.5">
+            <!-- Subtle Owner Lock/Unlock Button -->
+            <button id="owner-lock-btn" title="Owner Access" aria-label="Owner Access" class="h-10 px-4 rounded-full bg-white/85 hover:bg-white text-slate-500 hover:text-slate-800 border border-blue-100 shadow-sm backdrop-blur-md transition-all duration-200 flex items-center gap-2 text-xs font-medium focus:outline-none">
+                <svg id="lock-closed-icon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"></path>
+                </svg>
+                <svg id="lock-open-icon" class="w-4 h-4 text-blue-600 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"></path>
+                </svg>
+                <span id="owner-lock-label">Owner</span>
+            </button>
+
+            <!-- Live Cloud DB Setup Button (Visible ONLY when Owner is unlocked) -->
+            <button id="cloud-setup-btn" title="Connect your free Firebase Cloud Database for live public uploads" class="h-10 px-4 rounded-full bg-white/95 hover:bg-blue-50 text-blue-600 border border-blue-200 shadow-sm backdrop-blur-md transition-all duration-200 flex items-center gap-2 text-xs font-semibold focus:outline-none hidden">
+                <span id="cloud-status-dot" class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span id="cloud-status-text">Live Cloud: study-material-388b7</span>
+            </button>
+
+            <!-- Export Website with Embedded Keys & Images Button (Visible ONLY when Owner is unlocked) -->
+            <button id="export-site-btn" title="Download ready-to-host index.html with your Cloud Keys and uploaded images embedded" class="h-10 px-4 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 transition-all duration-200 flex items-center gap-2 text-xs font-semibold focus:outline-none hidden">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+                </svg>
+                <span>Download HTML for Web Host</span>
+            </button>
+        </div>
+
+        <!-- Floating "+" Upload Button (Bottom-Right Corner - HIDDEN FOR PUBLIC VISITORS) -->
+        <button id="upload-fab" title="Upload Study Material (Owner Only)" aria-label="Upload Study Material" class="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-20 w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white shadow-[0_10px_25px_-5px_rgba(37,99,235,0.5)] hover:shadow-[0_15px_30px_-5px_rgba(37,99,235,0.65)] hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-blue-400/40 hidden">
+            <svg class="w-7 h-7 sm:w-8 sm:h-8" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"></path>
+            </svg>
+        </button>
+
+        <!-- Hidden Native File Input -->
+        <input type="file" id="file-input" multiple="" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="hidden">
+    </main>
+
+    <!-- ========================================== -->
+    <!-- OWNER PASSWORD / PIN MODAL                 -->
+    <!-- ========================================== -->
+    <div id="owner-modal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-white border border-blue-100 rounded-3xl shadow-2xl max-w-sm w-full p-6 sm:p-8 text-center animate-popup">
+            <div class="w-12 h-12 mx-auto mb-4 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"></path>
+                </svg>
+            </div>
+            <h3 id="owner-modal-title" class="text-xl font-bold text-slate-900 mb-1">Set Owner Password</h3>
+            <p id="owner-modal-desc" class="text-xs sm:text-sm text-slate-500 mb-5">Create a password to protect uploads. Only you will use this to add or delete images.</p>
+            <form id="owner-form" class="space-y-4">
+                <input type="password" id="owner-pin-input" placeholder="Enter password..." required="" autocomplete="off" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 outline-none text-center text-slate-800 font-medium text-sm transition">
+                <div class="flex items-center gap-2.5">
+                    <button type="button" id="owner-cancel-btn" class="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium text-sm transition">
+                        Cancel
+                    </button>
+                    <button type="submit" id="owner-submit-btn" class="flex-1 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-md shadow-blue-500/20 transition">Save &amp; Unlock</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- LIVE CLOUD DATABASE SETUP MODAL (OPTION B) -->
+    <!-- ========================================== -->
+    <div id="cloud-modal" class="fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto hidden">
+        <div class="bg-white border border-blue-100 rounded-3xl shadow-2xl max-w-lg w-full p-6 sm:p-8 text-left animate-popup my-8">
+            <div class="flex items-start justify-between gap-4 mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg sm:text-xl font-bold text-slate-900">Live Cloud Database Setup</h3>
+                        <p id="cloud-modal-badge" class="text-xs font-semibold text-emerald-600">Connected to live Firebase project (study-material-388b7)</p>
+                    </div>
+                </div>
+                <button type="button" id="cloud-close-x" class="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Quick 3-Step Instructions -->
+            <div class="bg-blue-50/70 border border-blue-100 rounded-2xl p-4 mb-4 text-xs text-slate-600 space-y-1.5">
+                <p class="font-semibold text-blue-900">How to get your free Firebase keys (2 mins):</p>
+                <p>1. Go to <span class="font-semibold text-slate-800">console.firebase.google.com</span> → Create a project → Add a <span class="font-semibold">Web App (&lt;/&gt;)</span>.</p>
+                <p>2. In left sidebar, open <span class="font-semibold text-slate-800">Build → Firestore Database</span> → Create Database (start in <span class="font-semibold">Test Mode</span> or set rules to <code class="bg-white px-1 rounded">allow read, write: if true;</code>).</p>
+                <p>3. Copy your <code class="bg-white px-1 rounded">firebaseConfig</code> object and paste it below (or directly into <code class="bg-white px-1 rounded">CUSTOM_FIREBASE_CONFIG</code> in the code).</p>
+            </div>
+
+            <form id="cloud-form" class="space-y-4">
+                <div>
+                    <label for="cloud-config-input" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Paste Firebase Config (JSON or JS snippet)
+                    </label>
+                    <textarea id="cloud-config-input" rows="6" placeholder="{
+  &quot;apiKey&quot;: &quot;AIzaSy...&quot;,
+  &quot;authDomain&quot;: &quot;your-app.firebaseapp.com&quot;,
+  &quot;projectId&quot;: &quot;your-app&quot;,
+  &quot;storageBucket&quot;: &quot;your-app.appspot.com&quot;,
+  &quot;messagingSenderId&quot;: &quot;123456789&quot;,
+  &quot;appId&quot;: &quot;1:123456789:web:abcdef&quot;
+}" class="w-full px-3.5 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 outline-none font-mono text-xs text-slate-800 transition"></textarea>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-2.5 pt-1">
+                    <button type="button" id="sync-local-to-cloud-btn" class="py-2.5 px-4 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs transition">
+                        Sync Local Images to Cloud
+                    </button>
+                    <div class="flex items-center gap-2 ml-auto">
+                        <button type="button" id="cloud-cancel-btn" class="py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium text-xs sm:text-sm transition">
+                            Close
+                        </button>
+                        <button type="submit" class="py-2.5 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm shadow-md shadow-blue-500/20 transition">
+                            Save &amp; Connect Cloud
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 3. FULL-PAGE DRAG & DROP OVERLAY           -->
+    <!-- ========================================== -->
+    <div id="drop-overlay" class="fixed inset-0 z-40 hidden bg-blue-600/15 backdrop-blur-sm p-6 sm:p-10 pointer-events-none flex items-center justify-center transition-opacity duration-200">
+        <div class="w-full h-full max-w-5xl max-h-[80vh] bg-white/95 border-4 border-dashed border-blue-500 rounded-3xl shadow-2xl flex flex-col items-center justify-center p-8 text-center">
+            <div class="w-20 h-20 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-4 animate-bounce">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"></path>
+                </svg>
+            </div>
+            <h3 class="text-2xl font-bold text-slate-800 mb-1">Drop study material here</h3>
+            <p class="text-slate-500 text-sm sm:text-base">Supports JPG, JPEG, PNG, and WEBP images</p>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 4. FULL-SCREEN LIGHTBOX VIEWER             -->
+    <!-- ========================================== -->
+    <div id="lightbox" class="fixed inset-0 z-50 hidden bg-slate-950/95 backdrop-blur-md flex flex-col justify-between select-none opacity-0 transition-opacity duration-250">
+        
+        <!-- Top Control Bar -->
+        <div class="relative z-20 flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 bg-gradient-to-b from-slate-950/80 to-transparent">
+            <!-- Counter Badge -->
+            <div class="flex items-center gap-3">
+                <span id="lightbox-counter" class="px-3.5 py-1.5 rounded-full bg-white/10 border border-white/10 text-white text-xs sm:text-sm font-medium backdrop-blur-md">
+                    1 / 1
+                </span>
+            </div>
+
+            <!-- Action Controls: Zoom In, Zoom Out, Download, Close -->
+            <div class="flex items-center gap-1.5 sm:gap-2 bg-white/10 border border-white/15 backdrop-blur-md p-1.5 rounded-2xl">
+                <!-- Zoom Out -->
+                <button id="zoom-out-btn" title="Zoom Out (-)" aria-label="Zoom Out" class="p-2 sm:p-2.5 rounded-xl text-white/90 hover:text-white hover:bg-white/15 active:scale-95 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM13.5 10.5h-6"></path>
+                    </svg>
+                </button>
+
+                <!-- Current Zoom Percentage (Click to Reset) -->
+                <button id="zoom-reset-btn" title="Reset Zoom (100%)" class="px-2 py-1 rounded-lg text-xs font-semibold text-blue-200 hover:text-white hover:bg-white/10 transition min-w-[3.2rem] text-center">
+                    100%
+                </button>
+
+                <!-- Zoom In -->
+                <button id="zoom-in-btn" title="Zoom In (+)" aria-label="Zoom In" class="p-2 sm:p-2.5 rounded-xl text-white/90 hover:text-white hover:bg-white/15 active:scale-95 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6"></path>
+                    </svg>
+                </button>
+
+                <div class="w-px h-5 bg-white/20 mx-0.5"></div>
+
+                <!-- Download Image -->
+                <button id="download-btn" title="Download Image" aria-label="Download Image" class="p-2 sm:p-2.5 rounded-xl text-white/90 hover:text-white hover:bg-blue-600/80 active:scale-95 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+                    </svg>
+                </button>
+
+                <!-- Close Viewer -->
+                <button id="close-lightbox-btn" title="Close Viewer (Esc)" aria-label="Close Viewer" class="p-2 sm:p-2.5 rounded-xl text-white/90 hover:text-white hover:bg-red-500/80 active:scale-95 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Center Viewport Area -->
+        <div id="lightbox-stage" class="relative flex-1 w-full h-full flex items-center justify-center overflow-hidden p-2 sm:p-8">
+            
+            <!-- Previous Image Button -->
+            <button id="prev-btn" title="Previous Image (Left Arrow)" aria-label="Previous Image" class="absolute left-3 sm:left-6 z-20 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white/10 hover:bg-blue-600 text-white border border-white/15 backdrop-blur-md flex items-center justify-center shadow-lg transition-all duration-200 active:scale-95">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"></path>
+                </svg>
+            </button>
+
+            <!-- Displayed Full-Screen Image -->
+            <img id="lightbox-img" src="" alt="Study Material Full View" class="max-h-[82vh] max-w-[90vw] object-contain rounded-lg shadow-2xl select-none cursor-grab" draggable="false">
+
+            <!-- Next Image Button -->
+            <button id="next-btn" title="Next Image (Right Arrow)" aria-label="Next Image" class="absolute right-3 sm:right-6 z-20 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white/10 hover:bg-blue-600 text-white border border-white/15 backdrop-blur-md flex items-center justify-center shadow-lg transition-all duration-200 active:scale-95">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"></path>
+                </svg>
+            </button>
+
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 5. SUBTLE STATUS TOAST                     -->
+    <!-- ========================================== -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 bg-slate-900/90 text-white text-sm font-medium px-4 py-2.5 rounded-full shadow-lg backdrop-blur-md flex items-center gap-2 opacity-0 translate-y-3">
+        <span id="toast-text">Owner password saved! Syncing with Live Cloud...</span>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- EMBEDDED PUBLIC DATA (FOR WEB HOST EXPORT) -->
+    <!-- ========================================== -->
+    <script id="embedded-public-data">
+        window.__EMBEDDED_GALLERY_DATA__ = {"ownerPinHash":"45fd183a4461e6ddd91c549e960c82bab8416ae662444fbd57bdee23cb076f29","customFirebaseConfig":{"apiKey":"AIzaSyBVKgC5-AA-ZXMorefQxUMlf5bPbFOj5uU","authDomain":"study-material-388b7.firebaseapp.com","projectId":"study-material-388b7","storageBucket":"study-material-388b7.firebasestorage.app","messagingSenderId":"716152177751","appId":"1:716152177751:web:07282838df976c05218f12","measurementId":"G-RSV7BEW1KP"},"images":[]};
+    </script>
+
+    <!-- ========================================== -->
+    <!-- 6. APPLICATION LOGIC & LIVE CLOUD STORAGE  -->
+    <!-- ========================================== -->
+    <script type="module">
+        // ============================================================================
+        // PRIMARY LIVE CLOUD DATABASE: USER'S FIREBASE CONFIG (study-material-388b7)
+        // ============================================================================
+        const USER_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyBVKgC5-AA-ZXMorefQxUMlf5bPbFOj5uU",
+            authDomain: "study-material-388b7.firebaseapp.com",
+            projectId: "study-material-388b7",
+            storageBucket: "study-material-388b7.firebasestorage.app",
+            messagingSenderId: "716152177751",
+            appId: "1:716152177751:web:07282838df976c05218f12",
+            measurementId: "G-RSV7BEW1KP"
+        };
+
+        // --- Multi-Tier Storage State (User Primary Cloud + IndexedDB + Embedded) ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'study-material-gallery-app';
+        const envFirebaseConfig = typeof __firebase_config !== 'undefined' && __firebase_config ? JSON.parse(__firebase_config) : null;
+
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+        let isCloudActive = false;
+        let isUsingCustomCloud = true;
+        let activeCustomConfig = USER_FIREBASE_CONFIG;
+        let firestoreModules = null;
+        let unsubscribeCloudImages = null;
+        let authWarningNote = '';
+
+        // IndexedDB Configuration (Always available immediately on any web host)
+        const IDB_NAME = 'StudyMaterialGalleryDB';
+        const IDB_VERSION = 1;
+        const IMAGE_STORE = 'images';
+        const META_STORE = 'meta';
+        let idb = null;
+
+        // Shared Gallery State
+        let cloudItems = [];
+        let localItems = [];
+        let deletedEmbeddedIds = new Set();
+        let galleryItems = [];
+        let currentViewerIndex = -1;
+
+        // Owner Mode State (False by default so public visitors can ONLY view)
+        let isOwner = false;
+        let storedOwnerHash = (window.__EMBEDDED_GALLERY_DATA__ && window.__EMBEDDED_GALLERY_DATA__.ownerPinHash) || null;
+
+        // Lightbox Zoom & Pan State
+        let zoomLevel = 1;
+        const MIN_ZOOM = 0.5;
+        const MAX_ZOOM = 4;
+        const ZOOM_STEP = 0.25;
+        let panX = 0;
+        let panY = 0;
+        let isPanning = false;
+        let startPanX = 0;
+        let startPanY = 0;
+
+        // DOM Elements
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const openGalleryBtn = document.getElementById('open-gallery-btn');
+        const galleryScreen = document.getElementById('gallery-screen');
+        const loadingState = document.getElementById('loading-state');
+        const emptyState = document.getElementById('empty-state');
+        const emptyDropzone = document.getElementById('empty-dropzone');
+        const emptyOwnerHint = document.getElementById('empty-owner-hint');
+        const galleryGrid = document.getElementById('gallery-grid');
+        const uploadFab = document.getElementById('upload-fab');
+        const exportSiteBtn = document.getElementById('export-site-btn');
+        const cloudSetupBtn = document.getElementById('cloud-setup-btn');
+        const cloudStatusDot = document.getElementById('cloud-status-dot');
+        const cloudStatusText = document.getElementById('cloud-status-text');
+        const fileInput = document.getElementById('file-input');
+        const dropOverlay = document.getElementById('drop-overlay');
+
+        // Owner Controls Elements
+        const ownerLockBtn = document.getElementById('owner-lock-btn');
+        const lockClosedIcon = document.getElementById('lock-closed-icon');
+        const lockOpenIcon = document.getElementById('lock-open-icon');
+        const ownerLockLabel = document.getElementById('owner-lock-label');
+        const ownerModal = document.getElementById('owner-modal');
+        const ownerModalTitle = document.getElementById('owner-modal-title');
+        const ownerModalDesc = document.getElementById('owner-modal-desc');
+        const ownerForm = document.getElementById('owner-form');
+        const ownerPinInput = document.getElementById('owner-pin-input');
+        const ownerCancelBtn = document.getElementById('owner-cancel-btn');
+        const ownerSubmitBtn = document.getElementById('owner-submit-btn');
+
+        // Cloud Setup Modal Elements
+        const cloudModal = document.getElementById('cloud-modal');
+        const cloudModalBadge = document.getElementById('cloud-modal-badge');
+        const cloudConfigInput = document.getElementById('cloud-config-input');
+        const cloudForm = document.getElementById('cloud-form');
+        const cloudCancelBtn = document.getElementById('cloud-cancel-btn');
+        const cloudCloseX = document.getElementById('cloud-close-x');
+        const syncLocalToCloudBtn = document.getElementById('sync-local-to-cloud-btn');
+
+        // Lightbox Elements
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        const lightboxStage = document.getElementById('lightbox-stage');
+        const lightboxCounter = document.getElementById('lightbox-counter');
+        const zoomInBtn = document.getElementById('zoom-in-btn');
+        const zoomOutBtn = document.getElementById('zoom-out-btn');
+        const zoomResetBtn = document.getElementById('zoom-reset-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const closeLightboxBtn = document.getElementById('close-lightbox-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+
+        const toast = document.getElementById('toast');
+        const toastText = document.getElementById('toast-text');
+        let toastTimer = null;
+
+        // Allowed MIME types & extensions
+        const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        const ALLOWED_EXTENSIONS = /\.(jpe?g|png|webp)$/i;
+
+        // ==========================================
+        // UI NOTIFICATION HELPER
+        // ==========================================
+        function showToast(message) {
+            if (toastTimer) clearTimeout(toastTimer);
+            toastText.textContent = message;
+            toast.classList.remove('opacity-0', 'translate-y-3');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            toastTimer = setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'translate-y-3');
+            }, 2800);
+        }
+
+        // ==========================================
+        // SIMPLE HASH FOR OWNER PASSWORD VERIFICATION
+        // ==========================================
+        async function hashString(str) {
+            const clean = str.trim();
+            if (window.crypto && window.crypto.subtle) {
+                const msgBuffer = new TextEncoder().encode(clean);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            }
+            // Fallback hash for non-HTTPS local testing
+            let h = 0;
+            for (let i = 0; i < clean.length; i++) {
+                h = Math.imul(31, h) + clean.charCodeAt(i) | 0;
+            }
+            return 'h_' + Math.abs(h).toString(16);
+        }
+
+        // ==========================================
+        // INDEXEDDB PERSISTENT STORAGE LAYER
+        // ==========================================
+        function openIndexedDB() {
+            return new Promise((resolve) => {
+                if (!window.indexedDB) {
+                    resolve(null);
+                    return;
+                }
+                const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+                req.onupgradeneeded = (e) => {
+                    const database = e.target.result;
+                    if (!database.objectStoreNames.contains(IMAGE_STORE)) {
+                        database.createObjectStore(IMAGE_STORE, { keyPath: 'id' });
+                    }
+                    if (!database.objectStoreNames.contains(META_STORE)) {
+                        database.createObjectStore(META_STORE, { keyPath: 'key' });
+                    }
+                };
+                req.onsuccess = (e) => resolve(e.target.result);
+                req.onerror = () => resolve(null);
+            });
+        }
+
+        function idbGetMeta(key) {
+            return new Promise((resolve) => {
+                if (!idb) return resolve(null);
+                try {
+                    const tx = idb.transaction(META_STORE, 'readonly');
+                    const req = tx.objectStore(META_STORE).get(key);
+                    req.onsuccess = () => resolve(req.result ? req.result.value : null);
+                    req.onerror = () => resolve(null);
+                } catch {
+                    resolve(null);
+                }
+            });
+        }
+
+        function idbSetMeta(key, value) {
+            return new Promise((resolve) => {
+                if (!idb) return resolve();
+                try {
+                    const tx = idb.transaction(META_STORE, 'readwrite');
+                    tx.objectStore(META_STORE).put({ key, value });
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = () => resolve();
+                } catch {
+                    resolve();
+                }
+            });
+        }
+
+        function idbGetAllImages() {
+            return new Promise((resolve) => {
+                if (!idb) return resolve([]);
+                try {
+                    const tx = idb.transaction(IMAGE_STORE, 'readonly');
+                    const req = tx.objectStore(IMAGE_STORE).getAll();
+                    req.onsuccess = () => resolve(req.result || []);
+                    req.onerror = () => resolve([]);
+                } catch {
+                    resolve([]);
+                }
+            });
+        }
+
+        function idbSaveImage(item) {
+            return new Promise((resolve) => {
+                if (!idb) return resolve();
+                try {
+                    const tx = idb.transaction(IMAGE_STORE, 'readwrite');
+                    tx.objectStore(IMAGE_STORE).put(item);
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = () => resolve();
+                } catch {
+                    resolve();
+                }
+            });
+        }
+
+        function idbDeleteImage(id) {
+            return new Promise((resolve) => {
+                if (!idb) return resolve();
+                try {
+                    const tx = idb.transaction(IMAGE_STORE, 'readwrite');
+                    tx.objectStore(IMAGE_STORE).delete(id);
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = () => resolve();
+                } catch {
+                    resolve();
+                }
+            });
+        }
+
+        // ==========================================
+        // MERGE EMBEDDED + LOCAL + CLOUD IMAGES
+        // ==========================================
+        function rebuildGalleryItems() {
+            const map = new Map();
+
+            // 1. Embedded public images baked into the HTML file
+            const embeddedList = (window.__EMBEDDED_GALLERY_DATA__ && Array.isArray(window.__EMBEDDED_GALLERY_DATA__.images))
+                ? window.__EMBEDDED_GALLERY_DATA__.images
+                : [];
+            embeddedList.forEach((item) => {
+                if (item && item.id && item.url && !deletedEmbeddedIds.has(item.id)) {
+                    map.set(item.id, item);
+                }
+            });
+
+            // 2. Local IndexedDB images
+            localItems.forEach((item) => {
+                if (item && item.id && item.url) {
+                    map.set(item.id, item);
+                }
+            });
+
+            // 3. Live Cloud images (if cloud is active)
+            cloudItems.forEach((item) => {
+                if (item && item.id && item.url) {
+                    map.set(item.id, item);
+                }
+            });
+
+            const merged = Array.from(map.values());
+            merged.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+            galleryItems = merged;
+            renderGallery();
+
+            // Keep lightbox in sync if open
+            if (!lightbox.classList.contains('hidden')) {
+                if (galleryItems.length === 0) {
+                    closeLightbox();
+                } else {
+                    if (currentViewerIndex >= galleryItems.length) {
+                        currentViewerIndex = galleryItems.length - 1;
+                    }
+                    updateLightboxContent();
+                }
+            }
+        }
+
+        // ==========================================
+        // IMAGE OPTIMIZATION FOR STORAGE & EXPORT
+        // ==========================================
+        function compressImageToDataURL(file, maxDimension = 1600, quality = 0.82) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > maxDimension || height > maxDimension) {
+                            if (width > height) {
+                                height = Math.round((height * maxDimension) / width);
+                                width = maxDimension;
+                            } else {
+                                width = Math.round((width * maxDimension) / height);
+                                height = maxDimension;
+                            }
+                        }
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillRect(0, 0, width, height);
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // Prefer WebP or JPEG around ~0.82 quality so study notes stay sharp and < 850KB for Firestore
+                        let dataUrl = canvas.toDataURL('image/webp', quality);
+                        if (!dataUrl.startsWith('data:image/webp')) {
+                            dataUrl = canvas.toDataURL('image/jpeg', quality);
+                        }
+                        if (dataUrl.length > 850000) {
+                            dataUrl = canvas.toDataURL('image/jpeg', 0.68);
+                        }
+                        resolve(dataUrl);
+                    };
+                    img.onerror = (err) => reject(err);
+                    img.src = e.target.result;
+                };
+                reader.onerror = (err) => reject(err);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // ==========================================
+        // OWNER MODE UI TOGGLE
+        // ==========================================
+        function updateCloudStatusBadge() {
+            if (isCloudActive && isUsingCustomCloud) {
+                cloudStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+                cloudStatusText.textContent = 'Live Cloud: ' + (activeCustomConfig?.projectId || 'Connected');
+                cloudModalBadge.textContent = 'Connected to live Firebase project (' + (activeCustomConfig?.projectId || 'study-material-388b7') + ')' + (authWarningNote ? ' • ' + authWarningNote : '');
+                cloudModalBadge.className = 'text-xs font-semibold text-emerald-600';
+            } else if (isCloudActive) {
+                cloudStatusDot.className = 'w-2 h-2 rounded-full bg-blue-500';
+                cloudStatusText.textContent = 'Cloud DB Setup';
+                cloudModalBadge.textContent = 'Connected to fallback cloud.';
+                cloudModalBadge.className = 'text-xs font-medium text-blue-600';
+            } else {
+                cloudStatusDot.className = 'w-2 h-2 rounded-full bg-amber-400';
+                cloudStatusText.textContent = 'Connecting Cloud...';
+                cloudModalBadge.textContent = 'Connecting to study-material-388b7 Firestore...';
+                cloudModalBadge.className = 'text-xs font-medium text-amber-600';
+            }
+        }
+
+        function updateOwnerUI() {
+            updateCloudStatusBadge();
+            if (isOwner) {
+                uploadFab.classList.remove('hidden');
+                exportSiteBtn.classList.remove('hidden');
+                cloudSetupBtn.classList.remove('hidden');
+                emptyOwnerHint.classList.remove('hidden');
+                emptyDropzone.classList.add('cursor-pointer', 'border-2', 'border-dashed', 'border-blue-300', 'hover:border-blue-500');
+                lockClosedIcon.classList.add('hidden');
+                lockOpenIcon.classList.remove('hidden');
+                ownerLockLabel.textContent = 'Lock Owner Mode';
+                ownerLockBtn.classList.add('text-blue-600', 'border-blue-300', 'bg-blue-50/90');
+            } else {
+                uploadFab.classList.add('hidden');
+                exportSiteBtn.classList.add('hidden');
+                cloudSetupBtn.classList.add('hidden');
+                emptyOwnerHint.classList.add('hidden');
+                emptyDropzone.classList.remove('cursor-pointer', 'border-2', 'border-dashed', 'border-blue-300', 'hover:border-blue-500');
+                lockClosedIcon.classList.remove('hidden');
+                lockOpenIcon.classList.add('hidden');
+                ownerLockLabel.textContent = 'Owner';
+                ownerLockBtn.classList.remove('text-blue-600', 'border-blue-300', 'bg-blue-50/90');
+            }
+
+            // Show or hide delete buttons on all rendered cards
+            const deleteButtons = galleryGrid.querySelectorAll('.delete-card-btn');
+            deleteButtons.forEach((btn) => {
+                if (isOwner) {
+                    btn.classList.remove('hidden');
+                } else {
+                    btn.classList.add('hidden');
+                }
+            });
+        }
+
+        // ==========================================
+        // CLOUD PATH HELPERS (ROOT COLLECTIONS FOR study-material-388b7)
+        // ==========================================
+        function getImagesCollectionRef() {
+            const { collection } = firestoreModules;
+            if (isUsingCustomCloud) {
+                return collection(db, 'study_materials');
+            }
+            return collection(db, 'artifacts', appId, 'public', 'data', 'study_images');
+        }
+
+        function getImageDocRef(imageId) {
+            const { doc } = firestoreModules;
+            if (isUsingCustomCloud) {
+                return doc(db, 'study_materials', imageId);
+            }
+            return doc(db, 'artifacts', appId, 'public', 'data', 'study_images', imageId);
+        }
+
+        function getOwnerConfigDocRef() {
+            const { doc } = firestoreModules;
+            if (isUsingCustomCloud) {
+                return doc(db, 'study_settings', 'owner_config');
+            }
+            return doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'owner_config');
+        }
+
+        // ==========================================
+        // GALLERY RENDERING & STATE UPDATES
+        // ==========================================
+        function renderGallery() {
+            loadingState.classList.add('hidden');
+            galleryGrid.innerHTML = '';
+
+            if (galleryItems.length === 0) {
+                emptyState.classList.remove('hidden');
+                galleryGrid.classList.add('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            galleryGrid.classList.remove('hidden');
+
+            galleryItems.forEach((item) => {
+                const cardEl = createGalleryCardElement(item);
+                galleryGrid.appendChild(cardEl);
+            });
+        }
+
+        function createGalleryCardElement(item) {
+            const card = document.createElement('div');
+            card.className = 'gallery-card group relative aspect-[4/3] bg-white rounded-2xl p-2 shadow-sm hover:shadow-xl hover:shadow-blue-500/10 border border-blue-100/80 transition-all duration-300 cursor-pointer overflow-hidden';
+            card.dataset.id = item.id;
+
+            const innerWrapper = document.createElement('div');
+            innerWrapper.className = 'relative w-full h-full rounded-xl overflow-hidden bg-slate-50';
+
+            const img = document.createElement('img');
+            img.src = item.url;
+            img.alt = item.name || 'Study Material';
+            img.loading = 'lazy';
+            img.className = 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out';
+
+            // Subtle dark overlay on hover
+            const hoverOverlay = document.createElement('div');
+            hoverOverlay.className = 'absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-slate-900/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none';
+
+            // Delete Individual Image Button (ONLY visible when isOwner is true)
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.title = 'Delete image (Owner)';
+            deleteBtn.setAttribute('aria-label', 'Delete image');
+            deleteBtn.className = `delete-card-btn ${isOwner ? '' : 'hidden'} absolute top-2.5 right-2.5 z-10 w-9 h-9 rounded-full bg-white/90 hover:bg-red-500 text-slate-700 hover:text-white shadow-md backdrop-blur-md flex items-center justify-center transition-all duration-200 active:scale-90`;
+            deleteBtn.innerHTML = `
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                </svg>
+            `;
+
+            deleteBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                if (!isOwner) return;
+                await handleDeleteImage(item.id);
+            });
+
+            // Handle Card Click -> Open Lightbox
+            card.addEventListener('click', () => {
+                const index = galleryItems.findIndex((i) => i.id === item.id);
+                if (index !== -1) {
+                    openLightbox(index);
+                }
+            });
+
+            innerWrapper.appendChild(img);
+            innerWrapper.appendChild(hoverOverlay);
+            innerWrapper.appendChild(deleteBtn);
+            card.appendChild(innerWrapper);
+
+            return card;
+        }
+
+        // ==========================================
+        // UPLOAD & DELETE HANDLERS (NEVER BLOCKS ON SERVER)
+        // ==========================================
+        async function handleFilesUpload(fileList) {
+            if (!isOwner) {
+                showToast('Only the owner can upload study material.');
+                return;
+            }
+            if (!fileList || fileList.length === 0) return;
+
+            const validFiles = Array.from(fileList).filter((file) => {
+                return ALLOWED_TYPES.includes(file.type) || ALLOWED_EXTENSIONS.test(file.name);
+            });
+
+            if (validFiles.length === 0) {
+                showToast('Please select JPG, JPEG, PNG, or WEBP images.');
+                return;
+            }
+
+            showToast(`Uploading ${validFiles.length} image(s)...`);
+
+            let addedCount = 0;
+
+            for (const file of validFiles) {
+                try {
+                    const dataUrl = await compressImageToDataURL(file);
+                    const newItem = {
+                        id: 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8),
+                        name: file.name || `study-note-${Date.now()}.jpg`,
+                        url: dataUrl,
+                        createdAt: Date.now()
+                    };
+
+                    // Always save to persistent IndexedDB immediately
+                    await idbSaveImage(newItem);
+                    localItems.push(newItem);
+
+                    // Also sync to Live Cloud Database (works with or without Anonymous Auth if Firestore is in Test Mode)
+                    if (isCloudActive && db && firestoreModules) {
+                        try {
+                            const { setDoc } = firestoreModules;
+                            const docRef = getImageDocRef(newItem.id);
+                            await setDoc(docRef, {
+                                name: newItem.name,
+                                url: newItem.url,
+                                createdAt: newItem.createdAt,
+                                uploadedBy: currentUser ? currentUser.uid : 'owner'
+                            });
+                        } catch (cloudErr) {
+                            console.warn('Saved locally; cloud sync error:', cloudErr);
+                        }
+                    }
+
+                    addedCount++;
+                } catch (err) {
+                    console.error('Failed to process image:', err);
+                }
+            }
+
+            rebuildGalleryItems();
+
+            if (addedCount > 0) {
+                const targetMsg = isCloudActive ? 'uploaded to Live Cloud' : 'saved locally';
+                showToast(addedCount === 1 ? `1 image ${targetMsg}` : `${addedCount} images ${targetMsg}`);
+            } else {
+                showToast('Upload failed. Please try another image.');
+            }
+        }
+
+        async function handleDeleteImage(docId) {
+            if (!isOwner) return;
+
+            // Remove from local IndexedDB
+            await idbDeleteImage(docId);
+            localItems = localItems.filter((item) => item.id !== docId);
+
+            // Track if it was an embedded image so it stays deleted
+            deletedEmbeddedIds.add(docId);
+            await idbSetMeta('deletedEmbeddedIds', Array.from(deletedEmbeddedIds));
+
+            // Remove from Live Cloud if active
+            if (isCloudActive && db && firestoreModules) {
+                try {
+                    const { deleteDoc } = firestoreModules;
+                    const docRef = getImageDocRef(docId);
+                    await deleteDoc(docRef);
+                } catch (err) {
+                    console.warn('Cloud delete skipped:', err);
+                }
+            }
+
+            rebuildGalleryItems();
+            showToast('Image removed from gallery');
+        }
+
+        // ==========================================
+        // SYNC EXISTING LOCAL IMAGES TO LIVE CLOUD
+        // ==========================================
+        async function syncAllImagesToCloud(silent = false) {
+            if (!isCloudActive || !db || !firestoreModules) {
+                if (!silent) showToast('Connecting to Firebase Cloud first...');
+                return;
+            }
+            if (galleryItems.length === 0) {
+                if (!silent) showToast('No images in gallery to sync.');
+                return;
+            }
+
+            if (!silent) showToast(`Syncing ${galleryItems.length} image(s) to Live Cloud...`);
+            const { setDoc } = firestoreModules;
+            let synced = 0;
+
+            const cloudIds = new Set(cloudItems.map((i) => i.id));
+
+            for (const item of galleryItems) {
+                if (silent && cloudIds.has(item.id)) continue;
+                try {
+                    const docRef = getImageDocRef(item.id);
+                    await setDoc(docRef, {
+                        name: item.name || 'study-material.jpg',
+                        url: item.url,
+                        createdAt: item.createdAt || Date.now(),
+                        uploadedBy: currentUser ? currentUser.uid : 'owner'
+                    });
+                    synced++;
+                } catch (err) {
+                    console.error('Cloud sync error on item:', item.id, err);
+                }
+            }
+
+            if (storedOwnerHash) {
+                try {
+                    await setDoc(getOwnerConfigDocRef(), {
+                        pinHash: storedOwnerHash,
+                        updatedAt: Date.now()
+                    });
+                } catch (e) {
+                    console.warn('Owner hash sync skipped:', e);
+                }
+            }
+
+            if (synced > 0) {
+                showToast(`Synced ${synced} image(s) to Live Cloud Database!`);
+            } else if (!silent) {
+                showToast('All images are already synced with Live Cloud!');
+            }
+        }
+
+        // ==========================================
+        // EXPORT WEBSITE WITH EMBEDDED CLOUD KEYS & IMAGES
+        // ==========================================
+        function exportStaticWebsiteWithEmbeddedImages() {
+            if (!isOwner) return;
+
+            // Temporarily lock Owner UI before serializing HTML so public visitors see the locked state
+            isOwner = false;
+            updateOwnerUI();
+
+            // Prepare clean clone of document
+            const docClone = document.documentElement.cloneNode(true);
+
+            // Reset screen visibility on clone so exported site opens on Welcome Popup first
+            const cloneWelcome = docClone.querySelector('#welcome-screen');
+            const cloneGallery = docClone.querySelector('#gallery-screen');
+            const cloneGrid = docClone.querySelector('#gallery-grid');
+            const cloneModal = docClone.querySelector('#owner-modal');
+            const cloneCloudModal = docClone.querySelector('#cloud-modal');
+            const cloneToast = docClone.querySelector('#toast');
+
+            if (cloneWelcome) {
+                cloneWelcome.className = 'fixed inset-0 z-30 flex items-center justify-center p-4 sm:p-6 transition-opacity duration-500 ease-out';
+            }
+            if (cloneGallery) {
+                cloneGallery.className = 'hidden min-h-screen w-full px-4 py-8 sm:px-8 sm:py-12 md:px-12 pb-28 opacity-0 transition-opacity duration-500 ease-out';
+            }
+            if (cloneGrid) {
+                cloneGrid.innerHTML = '';
+            }
+            if (cloneModal) {
+                cloneModal.classList.add('hidden');
+            }
+            if (cloneCloudModal) {
+                cloneCloudModal.classList.add('hidden');
+            }
+            if (cloneToast) {
+                cloneToast.classList.add('opacity-0', 'translate-y-3');
+                cloneToast.classList.remove('opacity-100', 'translate-y-0');
+            }
+
+            // Inject current gallery images, ownerPinHash, AND customFirebaseConfig into #embedded-public-data
+            const embeddedScript = docClone.querySelector('#embedded-public-data');
+            if (embeddedScript) {
+                const payload = {
+                    ownerPinHash: storedOwnerHash,
+                    customFirebaseConfig: activeCustomConfig || USER_FIREBASE_CONFIG,
+                    images: galleryItems.map((item) => ({
+                        id: item.id,
+                        name: item.name,
+                        url: item.url,
+                        createdAt: item.createdAt
+                    }))
+                };
+                embeddedScript.textContent = `\n        window.__EMBEDDED_GALLERY_DATA__ = ${JSON.stringify(payload)};\n    `;
+            }
+
+            const finalHtml = '<!DOCTYPE html>\n' + docClone.outerHTML;
+            const blob = new Blob([finalHtml], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'index.html';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+            // Restore Owner Mode in current session
+            isOwner = true;
+            updateOwnerUI();
+            showToast('Downloaded index.html with Cloud Keys & images embedded!');
+        }
+
+        exportSiteBtn.addEventListener('click', exportStaticWebsiteWithEmbeddedImages);
+
+        // ==========================================
+        // CLOUD DB SETUP MODAL LOGIC (PARSE & CONNECT KEYS)
+        // ==========================================
+        function parseFirebaseConfigInput(rawText) {
+            if (!rawText || !rawText.trim()) return null;
+            let text = rawText.trim();
+
+            // Allow pasting full "const firebaseConfig = { ... };" snippet or plain JSON
+            const firstBrace = text.indexOf('{');
+            const lastBrace = text.lastIndexOf('}');
+            if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+                text = text.slice(firstBrace, lastBrace + 1);
+            }
+
+            try {
+                return JSON.parse(text);
+            } catch {
+                // Convert unquoted JS object keys (e.g., apiKey: "...") into valid JSON
+                const jsonNormalized = text
+                    .replace(/\/\/.*$/gm, '')
+                    .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
+                    .replace(/'/g, '"')
+                    .replace(/,\s*}/g, '}');
+                return JSON.parse(jsonNormalized);
+            }
+        }
+
+        function openCloudModal() {
+            if (!isOwner) return;
+            updateCloudStatusBadge();
+            if (activeCustomConfig && activeCustomConfig.apiKey) {
+                cloudConfigInput.value = JSON.stringify(activeCustomConfig, null, 2);
+            }
+            cloudModal.classList.remove('hidden');
+        }
+
+        function closeCloudModal() {
+            cloudModal.classList.add('hidden');
+        }
+
+        cloudSetupBtn.addEventListener('click', openCloudModal);
+        cloudCancelBtn.addEventListener('click', closeCloudModal);
+        cloudCloseX.addEventListener('click', closeCloudModal);
+        cloudModal.addEventListener('click', (e) => {
+            if (e.target === cloudModal) closeCloudModal();
+        });
+        syncLocalToCloudBtn.addEventListener('click', () => syncAllImagesToCloud(false));
+
+        cloudForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const raw = cloudConfigInput.value;
+            try {
+                const parsed = parseFirebaseConfigInput(raw);
+                if (!parsed || !parsed.apiKey || !parsed.projectId) {
+                    showToast('Invalid config: must include at least apiKey and projectId.');
+                    return;
+                }
+                activeCustomConfig = parsed;
+                await idbSetMeta('customFirebaseConfig', parsed);
+                showToast('Connecting to your Firebase Cloud Database...');
+                const connected = await connectToFirebaseCloud(parsed, true);
+                if (connected) {
+                    closeCloudModal();
+                    await syncAllImagesToCloud();
+                }
+            } catch (err) {
+                console.error('Config parse error:', err);
+                showToast('Could not parse config. Paste the { apiKey: "...", projectId: "..." } block.');
+            }
+        });
+
+        // ==========================================
+        // LIGHTBOX VIEWER CONTROLS (ZOOM, NAV, DOWNLOAD)
+        // ==========================================
+        function applyZoomTransform() {
+            lightboxImg.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
+            zoomResetBtn.textContent = `${Math.round(zoomLevel * 100)}%`;
+        }
+
+        function resetZoom() {
+            zoomLevel = 1;
+            panX = 0;
+            panY = 0;
+            applyZoomTransform();
+        }
+
+        function adjustZoom(delta) {
+            const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoomLevel + delta));
+            if (newZoom === 1) {
+                panX = 0;
+                panY = 0;
+            }
+            zoomLevel = newZoom;
+            applyZoomTransform();
+        }
+
+        function updateLightboxContent() {
+            if (currentViewerIndex < 0 || currentViewerIndex >= galleryItems.length) return;
+
+            const currentItem = galleryItems[currentViewerIndex];
+            resetZoom();
+            lightboxImg.src = currentItem.url;
+            lightboxImg.alt = currentItem.name || 'Study Material';
+            lightboxCounter.textContent = `${currentViewerIndex + 1} / ${galleryItems.length}`;
+
+            if (galleryItems.length <= 1) {
+                prevBtn.classList.add('opacity-30', 'pointer-events-none');
+                nextBtn.classList.add('opacity-30', 'pointer-events-none');
+            } else {
+                prevBtn.classList.remove('opacity-30', 'pointer-events-none');
+                nextBtn.classList.remove('opacity-30', 'pointer-events-none');
+            }
+        }
+
+        function openLightbox(index) {
+            if (index < 0 || index >= galleryItems.length) return;
+            currentViewerIndex = index;
+            updateLightboxContent();
+
+            lightbox.classList.remove('hidden');
+            void lightbox.offsetWidth;
+            lightbox.classList.remove('opacity-0');
+            lightbox.classList.add('opacity-100');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLightbox() {
+            lightbox.classList.remove('opacity-100');
+            lightbox.classList.add('opacity-0');
+            document.body.style.overflow = '';
+
+            setTimeout(() => {
+                lightbox.classList.add('hidden');
+                lightboxImg.src = '';
+                currentViewerIndex = -1;
+                resetZoom();
+            }, 250);
+        }
+
+        function showPrevImage() {
+            if (galleryItems.length <= 1) return;
+            currentViewerIndex = (currentViewerIndex - 1 + galleryItems.length) % galleryItems.length;
+            updateLightboxContent();
+        }
+
+        function showNextImage() {
+            if (galleryItems.length <= 1) return;
+            currentViewerIndex = (currentViewerIndex + 1) % galleryItems.length;
+            updateLightboxContent();
+        }
+
+        function downloadCurrentImage() {
+            if (currentViewerIndex < 0 || currentViewerIndex >= galleryItems.length) return;
+            const currentItem = galleryItems[currentViewerIndex];
+
+            const link = document.createElement('a');
+            link.href = currentItem.url;
+            link.download = currentItem.name || `study-material-${currentViewerIndex + 1}.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // ==========================================
+        // OWNER AUTHENTICATION MODAL LOGIC (NEVER HANGS)
+        // ==========================================
+        async function openOwnerModal() {
+            if (isOwner) {
+                isOwner = false;
+                updateOwnerUI();
+                showToast('Locked: Switched to Public View Mode');
+                return;
+            }
+
+            // Check Cloud if active, otherwise use IndexedDB or Embedded Owner Hash immediately
+            if (isCloudActive && db && firestoreModules) {
+                try {
+                    const { getDoc } = firestoreModules;
+                    const configRef = getOwnerConfigDocRef();
+                    const snap = await getDoc(configRef);
+                    if (snap.exists() && snap.data().pinHash) {
+                        storedOwnerHash = snap.data().pinHash;
+                        await idbSetMeta('ownerPinHash', storedOwnerHash);
+                    }
+                } catch (err) {
+                    console.warn('Using local owner config:', err);
+                }
+            }
+
+            if (!storedOwnerHash) {
+                const localHash = await idbGetMeta('ownerPinHash');
+                if (localHash) storedOwnerHash = localHash;
+            }
+
+            if (storedOwnerHash) {
+                ownerModalTitle.textContent = 'Owner Access';
+                ownerModalDesc.textContent = 'Enter your Owner Password to upload or delete study material.';
+                ownerSubmitBtn.textContent = 'Unlock';
+            } else {
+                ownerModalTitle.textContent = 'Set Owner Password';
+                ownerModalDesc.textContent = 'Create a password to protect uploads. Only you will use this to add or delete images.';
+                ownerSubmitBtn.textContent = 'Save & Unlock';
+            }
+
+            ownerPinInput.value = '';
+            ownerModal.classList.remove('hidden');
+            setTimeout(() => ownerPinInput.focus(), 50);
+        }
+
+        function closeOwnerModal() {
+            ownerModal.classList.add('hidden');
+            ownerPinInput.value = '';
+        }
+
+        ownerLockBtn.addEventListener('click', openOwnerModal);
+        ownerCancelBtn.addEventListener('click', closeOwnerModal);
+        ownerModal.addEventListener('click', (e) => {
+            if (e.target === ownerModal) closeOwnerModal();
+        });
+
+        ownerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const rawPin = ownerPinInput.value.trim();
+            if (!rawPin) return;
+
+            const inputHash = await hashString(rawPin);
+
+            if (!storedOwnerHash) {
+                // First time setup: save Owner PIN hash locally AND to Cloud if available
+                storedOwnerHash = inputHash;
+                await idbSetMeta('ownerPinHash', inputHash);
+
+                if (isCloudActive && db && firestoreModules) {
+                    try {
+                        const { setDoc } = firestoreModules;
+                        const configRef = getOwnerConfigDocRef();
+                        await setDoc(configRef, {
+                            pinHash: inputHash,
+                            updatedAt: Date.now()
+                        });
+                    } catch (err) {
+                        console.warn('Saved owner password locally:', err);
+                    }
+                }
+
+                isOwner = true;
+                updateOwnerUI();
+                closeOwnerModal();
+                showToast('Owner password saved! Syncing with Live Cloud...');
+                await syncAllImagesToCloud(true);
+            } else {
+                // Verify against stored hash
+                if (inputHash === storedOwnerHash) {
+                    isOwner = true;
+                    updateOwnerUI();
+                    closeOwnerModal();
+                    showToast('Owner mode unlocked! You can now upload or delete.');
+                    await syncAllImagesToCloud(true);
+                } else {
+                    ownerPinInput.value = '';
+                    showToast('Incorrect Owner Password');
+                }
+            }
+        });
+
+        // ==========================================
+        // EVENT LISTENERS
+        // ==========================================
+
+        // 1. Open Study Material Button Transition
+        openGalleryBtn.addEventListener('click', () => {
+            welcomeScreen.classList.add('opacity-0', 'pointer-events-none');
+            galleryScreen.classList.remove('hidden');
+
+            requestAnimationFrame(() => {
+                galleryScreen.classList.remove('opacity-0');
+                galleryScreen.classList.add('opacity-100');
+            });
+
+            setTimeout(() => {
+                welcomeScreen.classList.add('hidden');
+            }, 500);
+        });
+
+        // 2. Upload Button ("+") & Empty State Click -> Open File Picker (ONLY IN OWNER MODE)
+        uploadFab.addEventListener('click', () => {
+            if (!isOwner) return;
+            fileInput.value = '';
+            fileInput.click();
+        });
+
+        emptyDropzone.addEventListener('click', () => {
+            if (!isOwner) return;
+            fileInput.value = '';
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (isOwner && e.target.files && e.target.files.length > 0) {
+                handleFilesUpload(e.target.files);
+            }
+        });
+
+        // 3. Full-Page Drag and Drop Support (ONLY IN OWNER MODE)
+        let dragCounter = 0;
+
+        window.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            if (!isOwner || !welcomeScreen.classList.contains('hidden')) return;
+            dragCounter++;
+            dropOverlay.classList.remove('hidden');
+        });
+
+        window.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+
+        window.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            if (!isOwner) return;
+            dragCounter--;
+            if (dragCounter <= 0) {
+                dragCounter = 0;
+                dropOverlay.classList.add('hidden');
+            }
+        });
+
+        window.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dragCounter = 0;
+            dropOverlay.classList.add('hidden');
+
+            if (!isOwner) return;
+
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                handleFilesUpload(e.dataTransfer.files);
+            }
+        });
+
+        // 4. Lightbox Controls
+        zoomInBtn.addEventListener('click', () => adjustZoom(ZOOM_STEP));
+        zoomOutBtn.addEventListener('click', () => adjustZoom(-ZOOM_STEP));
+        zoomResetBtn.addEventListener('click', resetZoom);
+        downloadBtn.addEventListener('click', downloadCurrentImage);
+        closeLightboxBtn.addEventListener('click', closeLightbox);
+        prevBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showPrevImage();
+        });
+        nextBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showNextImage();
+        });
+
+        lightboxStage.addEventListener('click', (e) => {
+            if (e.target === lightboxStage) {
+                closeLightbox();
+            }
+        });
+
+        lightboxStage.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP;
+            adjustZoom(delta);
+        }, { passive: false });
+
+        lightboxImg.addEventListener('mousedown', (e) => {
+            if (zoomLevel <= 1) return;
+            isPanning = true;
+            startPanX = e.clientX - panX;
+            startPanY = e.clientY - panY;
+            lightboxImg.classList.add('dragging');
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isPanning) return;
+            panX = e.clientX - startPanX;
+            panY = e.clientY - startPanY;
+            applyZoomTransform();
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isPanning) {
+                isPanning = false;
+                lightboxImg.classList.remove('dragging');
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (!ownerModal.classList.contains('hidden') && e.key === 'Escape') {
+                closeOwnerModal();
+                return;
+            }
+            if (lightbox.classList.contains('hidden')) return;
+
+            switch (e.key) {
+                case 'Escape':
+                    closeLightbox();
+                    break;
+                case 'ArrowLeft':
+                    showPrevImage();
+                    break;
+                case 'ArrowRight':
+                    showNextImage();
+                    break;
+                case '+':
+                case '=':
+                    adjustZoom(ZOOM_STEP);
+                    break;
+                case '-':
+                    adjustZoom(-ZOOM_STEP);
+                    break;
+                case '0':
+                    resetZoom();
+                    break;
+            }
+        });
+
+        // Touch Swipe Support for Mobile Lightbox Navigation
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        lightboxStage.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1 && zoomLevel === 1) {
+                touchStartX = e.touches[0].screenX;
+            }
+        }, { passive: true });
+
+        lightboxStage.addEventListener('touchend', (e) => {
+            if (zoomLevel !== 1 || !touchStartX) return;
+            touchEndX = e.changedTouches[0].screenX;
+            const swipeDistance = touchEndX - touchStartX;
+            if (Math.abs(swipeDistance) > 50) {
+                if (swipeDistance < 0) {
+                    showNextImage();
+                } else {
+                    showPrevImage();
+                }
+            }
+            touchStartX = 0;
+        }, { passive: true });
+
+        // ==========================================
+        // CONNECT TO FIREBASE CLOUD (USER'S study-material-388b7 PRIMARY)
+        // ==========================================
+        async function connectToFirebaseCloud(configToUse, isCustom) {
+            if (!configToUse || !configToUse.apiKey || !configToUse.projectId) {
+                return false;
+            }
+
+            try {
+                const [{ initializeApp, getApps }, { getAuth, signInAnonymously, signInWithCustomToken }, firestoreMod] = await Promise.all([
+                    import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"),
+                    import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"),
+                    import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js")
+                ]);
+
+                firestoreModules = firestoreMod;
+                const { getFirestore, onSnapshot, getDoc } = firestoreMod;
+
+                const appName = isCustom ? 'study-material-cloud-' + configToUse.projectId : undefined;
+                const existingApps = getApps();
+                const matchingApp = existingApps.find((a) => a.name === appName);
+                const app = matchingApp
+                    ? matchingApp
+                    : (!isCustom && existingApps.length > 0 ? existingApps[0] : initializeApp(configToUse, appName));
+
+                db = getFirestore(app);
+                auth = getAuth(app);
+                isUsingCustomCloud = Boolean(isCustom);
+                authWarningNote = '';
+
+                // Attempt Anonymous Auth, and gracefully continue if Anonymous Auth isn't enabled yet
+                try {
+                    if (!isCustom && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        const cred = await signInWithCustomToken(auth, __initial_auth_token);
+                        currentUser = cred.user;
+                    } else {
+                        const cred = await signInAnonymously(auth);
+                        currentUser = cred.user;
+                    }
+                } catch (authErr) {
+                    const code = authErr && authErr.code ? authErr.code : '';
+                    if (code === 'auth/operation-not-allowed' || code === 'auth/admin-restricted-operation') {
+                        authWarningNote = 'Test Mode Active (Anonymous Auth optional)';
+                    }
+                    console.warn('Proceeding directly with Firestore Test Mode rules:', authErr);
+                }
+
+                // Fetch Owner PIN hash from study_settings/owner_config if set in cloud
+                try {
+                    const ownerSnap = await getDoc(getOwnerConfigDocRef());
+                    if (ownerSnap.exists() && ownerSnap.data().pinHash) {
+                        storedOwnerHash = ownerSnap.data().pinHash;
+                        await idbSetMeta('ownerPinHash', storedOwnerHash);
+                    }
+                } catch (metaErr) {
+                    console.warn('Owner config check skipped:', metaErr);
+                }
+
+                if (unsubscribeCloudImages) {
+                    unsubscribeCloudImages();
+                }
+
+                const imagesColRef = getImagesCollectionRef();
+                unsubscribeCloudImages = onSnapshot(
+                    imagesColRef,
+                    (snapshot) => {
+                        const items = [];
+                        snapshot.forEach((docSnap) => {
+                            const data = docSnap.data();
+                            if (data && data.url) {
+                                items.push({
+                                    id: docSnap.id,
+                                    name: data.name || 'study-material.jpg',
+                                    url: data.url,
+                                    createdAt: data.createdAt || 0
+                                });
+                            }
+                        });
+                        cloudItems = items;
+                        isCloudActive = true;
+                        updateCloudStatusBadge();
+                        rebuildGalleryItems();
+                    },
+                    (error) => {
+                        console.warn('Cloud listener error (check Firestore rules):', error);
+                        if (isCustom) {
+                            showToast('Firestore connected: Ensure Firestore Database is created in Test Mode.');
+                        }
+                    }
+                );
+
+                isCloudActive = true;
+                updateCloudStatusBadge();
+                return true;
+            } catch (err) {
+                console.warn('Cloud connection error:', err);
+                return false;
+            }
+        }
+
+        // ==========================================
+        // INITIALIZE STORAGE (USER'S study-material-388b7 FIRST)
+        // ==========================================
+        async function initGalleryApp() {
+            // 1. Initialize IndexedDB & load local/embedded data immediately (0ms wait)
+            idb = await openIndexedDB();
+            const savedPinHash = await idbGetMeta('ownerPinHash');
+            if (savedPinHash && !storedOwnerHash) {
+                storedOwnerHash = savedPinHash;
+            }
+            const savedDeletedIds = await idbGetMeta('deletedEmbeddedIds');
+            if (Array.isArray(savedDeletedIds)) {
+                deletedEmbeddedIds = new Set(savedDeletedIds);
+            }
+            localItems = await idbGetAllImages();
+            rebuildGalleryItems();
+
+            // 2. Prioritize USER_FIREBASE_CONFIG (study-material-388b7) over any sandbox config
+            const embeddedCustomConfig = window.__EMBEDDED_GALLERY_DATA__ && window.__EMBEDDED_GALLERY_DATA__.customFirebaseConfig;
+            const idbCustomConfig = await idbGetMeta('customFirebaseConfig');
+
+            if (USER_FIREBASE_CONFIG && USER_FIREBASE_CONFIG.apiKey && USER_FIREBASE_CONFIG.projectId) {
+                activeCustomConfig = USER_FIREBASE_CONFIG;
+            } else if (idbCustomConfig && idbCustomConfig.apiKey && idbCustomConfig.projectId) {
+                activeCustomConfig = idbCustomConfig;
+            } else if (embeddedCustomConfig && embeddedCustomConfig.apiKey && embeddedCustomConfig.projectId) {
+                activeCustomConfig = embeddedCustomConfig;
+            }
+
+            if (activeCustomConfig) {
+                const ok = await connectToFirebaseCloud(activeCustomConfig, true);
+                if (ok && localItems.length > 0) {
+                    // Automatically push any existing local images to study-material-388b7 so they appear on all devices
+                    setTimeout(() => syncAllImagesToCloud(true), 1200);
+                }
+                return;
+            }
+
+            // 3. Fallback to environment config only if no user config exists
+            if (envFirebaseConfig) {
+                await connectToFirebaseCloud(envFirebaseConfig, false);
+            }
+        }
+
+        initGalleryApp();
+    </script>
+
+</body></html>
