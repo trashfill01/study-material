@@ -509,7 +509,9 @@
         let isCloudActive = false;
         let cloudFirstLoadDone = false;
         function markCloudFirstLoadDone() { if (!cloudFirstLoadDone) { cloudFirstLoadDone = true; try { rebuildGalleryItems(); } catch (e) {} } }
-        setTimeout(markCloudFirstLoadDone, 25000);
+        // Do not leave visitors waiting indefinitely if Firebase is slow or its
+        // first snapshot is served from an empty local cache.
+        setTimeout(markCloudFirstLoadDone, 8000);
         setTimeout(() => { const t = document.querySelector('#loading-state p'); if (t && !cloudFirstLoadDone) t.textContent = 'Still loading... slow connection, please wait'; }, 8000);
         let isUsingCustomCloud = true;
         let activeCustomConfig = USER_FIREBASE_CONFIG;
@@ -2122,6 +2124,16 @@
         openGalleryBtn.addEventListener('click', () => {
             welcomeScreen.classList.add('opacity-0', 'pointer-events-none');
             galleryScreen.classList.remove('hidden');
+
+            // Render the current IndexedDB / embedded / cloud state immediately.
+            // Previously the gallery was only refreshed by later owner/cloud events,
+            // making materials appear after opening and closing the Owner dialog.
+            try {
+                rebuildGalleryItems();
+            } catch (error) {
+                console.warn('Could not refresh gallery on open:', error);
+                renderGallery();
+            }
 
             requestAnimationFrame(() => {
                 galleryScreen.classList.remove('opacity-0');
