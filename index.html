@@ -6,8 +6,6 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts: Inter -->
-    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
@@ -74,8 +72,6 @@
 
         .gallery-card {
             animation: cardFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-            content-visibility: auto;
-            contain-intrinsic-size: 240px 180px;
         }
 
         /* Custom subtle scrollbars */
@@ -513,8 +509,9 @@
         let isCloudActive = false;
         let cloudFirstLoadDone = false;
         function markCloudFirstLoadDone() { if (!cloudFirstLoadDone) { cloudFirstLoadDone = true; try { rebuildGalleryItems(); } catch (e) {} } }
-        setTimeout(markCloudFirstLoadDone, 7000);
-        setTimeout(() => { const t = document.querySelector('#loading-state p'); if (t && !cloudFirstLoadDone) t.textContent = 'Connecting to cloud… your saved material will appear shortly'; }, 3500);
+        // Keep the loading state until Firestore confirms its first server snapshot.
+        // A timeout must never report an empty gallery while cloud data is still arriving.
+        setTimeout(() => { const t = document.querySelector('#loading-state p'); if (t && !cloudFirstLoadDone) t.textContent = 'Connecting to study materials…'; }, 6000);
         let isUsingCustomCloud = true;
         let activeCustomConfig = USER_FIREBASE_CONFIG;
         let firestoreModules = null;
@@ -843,6 +840,24 @@
                     resolve();
                 }
             });
+        }
+
+        // Persist the last confirmed cloud snapshot locally so repeat visits can
+        // paint the gallery from IndexedDB before the live Firebase listener returns.
+        async function persistCloudSnapshotToLocalCache(items) {
+            if (!idb) return;
+            const previousIds = await idbGetMeta('cloudCachedImageIds');
+            const previousSet = new Set(Array.isArray(previousIds) ? previousIds : []);
+            const currentIds = items.map((item) => item.id);
+            const currentSet = new Set(currentIds);
+            const staleIds = Array.from(previousSet).filter((id) => !currentSet.has(id));
+            if (staleIds.length) {
+                await idbBulkDeleteImages(staleIds);
+                const staleSet = new Set(staleIds);
+                localItems = localItems.filter((item) => !staleSet.has(item.id));
+            }
+            if (items.length) await idbBulkSaveImages(items);
+            await idbSetMeta('cloudCachedImageIds', currentIds);
         }
 
         // ==========================================
@@ -1215,8 +1230,6 @@
             img.src = item.url;
             img.alt = item.name || 'Study Material';
             img.loading = 'lazy';
-            img.decoding = 'async';
-            img.fetchPriority = 'low';
             img.className = 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out';
 
             // Subtle dark overlay on hover
@@ -1682,7 +1695,8 @@
             }
 
             const cloudIds = new Set(cloudItems.map((i) => i.id));
-            const unsyncedItems = galleryItems.filter((item) => !cloudIds.has(item.id));
+            const cachedCloudIds = new Set((await idbGetMeta('cloudCachedImageIds')) || []);
+            const unsyncedItems = galleryItems.filter((item) => !cloudIds.has(item.id) && !cachedCloudIds.has(item.id));
 
             if (unsyncedItems.length === 0) {
                 if (!silent) showToast(`All ${galleryItems.length} images are already live on Public Cloud!`);
@@ -2126,8 +2140,8 @@
 
         // 1. Open Study Material Button Transition
         openGalleryBtn.addEventListener('click', () => {
-            // Paint everything already available locally before starting the screen transition.
-            try { rebuildGalleryItems(); } catch (err) { console.warn('Gallery refresh skipped:', err); }
+            // Paint locally available material immediately; the live cloud listener updates it next.
+            try { rebuildGalleryItems(); } catch (e) { console.warn('Gallery refresh warning:', e); }
             welcomeScreen.classList.add('opacity-0', 'pointer-events-none');
             galleryScreen.classList.remove('hidden');
 
@@ -2324,14 +2338,12 @@
                     ? matchingApp
                     : (!isCustom && existingApps.length > 0 ? existingApps[0] : initializeApp(configToUse, appName));
 
-                // Let Firebase choose the fastest supported transport (normally WebChannel).
-                // Forced long-polling can add noticeable latency on modern browsers.
+                // Let the Firebase SDK select its fastest supported transport.
+                // Forced long-polling can add substantial delay on normal networks.
                 try {
                     db = getFirestore(app);
                 } catch (initErr) {
-                    // Reuse the already-initialized Firestore instance if another part
-                    // of the page initialized it first.
-                    db = getFirestore(app);
+                    db = firestoreMod.initializeFirestore(app);
                 }
                 auth = getAuth(app);
                 isUsingCustomCloud = Boolean(isCustom);
@@ -2347,7 +2359,7 @@
                         const cred = await signInAnonymously(auth);
                         currentUser = cred.user;
                     }
-                    })(), new Promise((r) => setTimeout(r, 3000))]);
+                    })(), new Promise((r) => setTimeout(r, 1200))]);
                 } catch (authErr) {
                     const code = authErr && authErr.code ? authErr.code : '';
                     if (code === 'auth/operation-not-allowed' || code === 'auth/admin-restricted-operation') {
@@ -2374,13 +2386,10 @@
                 const imagesColRef = getImagesCollectionRef();
                 unsubscribeCloudImages = onSnapshot(
                     imagesColRef,
+                    { includeMetadataChanges: true },
                     (snapshot) => {
                         if (snapshot.metadata && snapshot.metadata.fromCache && snapshot.empty) {
-                            // An empty local cache is not a reason to block the page.
-                            // Show the empty/local state immediately; the live server snapshot
-                            // will populate the gallery as soon as it arrives.
-                            markCloudFirstLoadDone();
-                            return;
+                            return; // not real server data yet - keep showing "Loading"
                         }
                         const items = [];
                         snapshot.forEach((docSnap) => {
@@ -2395,6 +2404,8 @@
                             }
                         });
                         cloudItems = items;
+                        // Cache in the background; never wait for IndexedDB before showing cloud results.
+                        persistCloudSnapshotToLocalCache(items).catch((cacheErr) => console.warn('Local cloud cache skipped:', cacheErr));
                         isCloudActive = true;
                         lastCloudError = null;
                         cloudFirstLoadDone = true;
