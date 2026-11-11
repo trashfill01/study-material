@@ -509,7 +509,8 @@
         let isCloudActive = false;
         let cloudFirstLoadDone = false;
         function markCloudFirstLoadDone() { if (!cloudFirstLoadDone) { cloudFirstLoadDone = true; try { rebuildGalleryItems(); } catch (e) {} } }
-        setTimeout(markCloudFirstLoadDone, 12000);
+        setTimeout(markCloudFirstLoadDone, 25000);
+        setTimeout(() => { const t = document.querySelector('#loading-state p'); if (t && !cloudFirstLoadDone) t.textContent = 'Still loading... slow connection, please wait'; }, 8000);
         let isUsingCustomCloud = true;
         let activeCustomConfig = USER_FIREBASE_CONFIG;
         let firestoreModules = null;
@@ -2317,8 +2318,7 @@
 
                 try {
                     db = firestoreMod.initializeFirestore(app, {
-                        experimentalAutoDetectLongPolling: true,
-                        localCache: firestoreMod.persistentLocalCache()
+                        experimentalForceLongPolling: true
                     });
                 } catch (initErr) {
                     db = getFirestore(app);
@@ -2365,6 +2365,9 @@
                 unsubscribeCloudImages = onSnapshot(
                     imagesColRef,
                     (snapshot) => {
+                        if (snapshot.metadata && snapshot.metadata.fromCache && snapshot.empty) {
+                            return; // not real server data yet - keep showing "Loading"
+                        }
                         const items = [];
                         snapshot.forEach((docSnap) => {
                             const data = docSnap.data();
