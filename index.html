@@ -6,6 +6,8 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
@@ -72,6 +74,8 @@
 
         .gallery-card {
             animation: cardFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            content-visibility: auto;
+            contain-intrinsic-size: 240px 180px;
         }
 
         /* Custom subtle scrollbars */
@@ -509,10 +513,8 @@
         let isCloudActive = false;
         let cloudFirstLoadDone = false;
         function markCloudFirstLoadDone() { if (!cloudFirstLoadDone) { cloudFirstLoadDone = true; try { rebuildGalleryItems(); } catch (e) {} } }
-        // Do not leave visitors waiting indefinitely if Firebase is slow or its
-        // first snapshot is served from an empty local cache.
-        setTimeout(markCloudFirstLoadDone, 8000);
-        setTimeout(() => { const t = document.querySelector('#loading-state p'); if (t && !cloudFirstLoadDone) t.textContent = 'Still loading... slow connection, please wait'; }, 8000);
+        setTimeout(markCloudFirstLoadDone, 7000);
+        setTimeout(() => { const t = document.querySelector('#loading-state p'); if (t && !cloudFirstLoadDone) t.textContent = 'Connecting to cloud… your saved material will appear shortly'; }, 3500);
         let isUsingCustomCloud = true;
         let activeCustomConfig = USER_FIREBASE_CONFIG;
         let firestoreModules = null;
@@ -1213,6 +1215,8 @@
             img.src = item.url;
             img.alt = item.name || 'Study Material';
             img.loading = 'lazy';
+            img.decoding = 'async';
+            img.fetchPriority = 'low';
             img.className = 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out';
 
             // Subtle dark overlay on hover
@@ -2122,18 +2126,10 @@
 
         // 1. Open Study Material Button Transition
         openGalleryBtn.addEventListener('click', () => {
+            // Paint everything already available locally before starting the screen transition.
+            try { rebuildGalleryItems(); } catch (err) { console.warn('Gallery refresh skipped:', err); }
             welcomeScreen.classList.add('opacity-0', 'pointer-events-none');
             galleryScreen.classList.remove('hidden');
-
-            // Render the current IndexedDB / embedded / cloud state immediately.
-            // Previously the gallery was only refreshed by later owner/cloud events,
-            // making materials appear after opening and closing the Owner dialog.
-            try {
-                rebuildGalleryItems();
-            } catch (error) {
-                console.warn('Could not refresh gallery on open:', error);
-                renderGallery();
-            }
 
             requestAnimationFrame(() => {
                 galleryScreen.classList.remove('opacity-0');
@@ -2328,11 +2324,13 @@
                     ? matchingApp
                     : (!isCustom && existingApps.length > 0 ? existingApps[0] : initializeApp(configToUse, appName));
 
+                // Let Firebase choose the fastest supported transport (normally WebChannel).
+                // Forced long-polling can add noticeable latency on modern browsers.
                 try {
-                    db = firestoreMod.initializeFirestore(app, {
-                        experimentalForceLongPolling: true
-                    });
+                    db = getFirestore(app);
                 } catch (initErr) {
+                    // Reuse the already-initialized Firestore instance if another part
+                    // of the page initialized it first.
                     db = getFirestore(app);
                 }
                 auth = getAuth(app);
@@ -2378,7 +2376,11 @@
                     imagesColRef,
                     (snapshot) => {
                         if (snapshot.metadata && snapshot.metadata.fromCache && snapshot.empty) {
-                            return; // not real server data yet - keep showing "Loading"
+                            // An empty local cache is not a reason to block the page.
+                            // Show the empty/local state immediately; the live server snapshot
+                            // will populate the gallery as soon as it arrives.
+                            markCloudFirstLoadDone();
+                            return;
                         }
                         const items = [];
                         snapshot.forEach((docSnap) => {
