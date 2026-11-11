@@ -527,6 +527,7 @@
 
         // Shared Gallery State
         let cloudItems = [];
+        let cloudItemIds = new Set();
         let localItems = [];
         let deletedEmbeddedIds = new Set();
         let galleryItems = [];
@@ -1171,7 +1172,11 @@
         // ==========================================
         // GALLERY RENDERING & STATE UPDATES
         // ==========================================
+        const GALLERY_RENDER_BATCH_SIZE = 48;
+        let galleryRenderVersion = 0;
+
         function renderGallery() {
+            const renderVersion = ++galleryRenderVersion;
             if (galleryItems.length > 0 || cloudFirstLoadDone) loadingState.classList.add('hidden');
             galleryGrid.innerHTML = '';
 
@@ -1192,13 +1197,39 @@
             emptyState.classList.add('hidden');
             galleryGrid.classList.remove('hidden');
 
-            // Use DocumentFragment so rendering 1000+ images happens in a single layout pass
+            // Paint the first screenful immediately, then yield between batches so
+            // opening a large gallery does not freeze the page.
+            const itemsToRender = galleryItems.slice();
             const fragment = document.createDocumentFragment();
-            galleryItems.forEach((item) => {
+            const firstBatch = itemsToRender.slice(0, GALLERY_RENDER_BATCH_SIZE);
+            firstBatch.forEach((item) => {
                 const cardEl = createGalleryCardElement(item);
                 fragment.appendChild(cardEl);
             });
             galleryGrid.appendChild(fragment);
+            updateSelectionUI();
+
+            if (itemsToRender.length > GALLERY_RENDER_BATCH_SIZE) {
+                renderGalleryBatch(itemsToRender, GALLERY_RENDER_BATCH_SIZE, renderVersion);
+            }
+        }
+
+        function renderGalleryBatch(items, startIndex, renderVersion) {
+            setTimeout(() => {
+                if (renderVersion !== galleryRenderVersion) return;
+
+                const fragment = document.createDocumentFragment();
+                const endIndex = Math.min(startIndex + GALLERY_RENDER_BATCH_SIZE, items.length);
+                for (let i = startIndex; i < endIndex; i++) {
+                    fragment.appendChild(createGalleryCardElement(items[i]));
+                }
+                galleryGrid.appendChild(fragment);
+                updateSelectionUI();
+
+                if (endIndex < items.length) {
+                    renderGalleryBatch(items, endIndex, renderVersion);
+                }
+            }, 0);
         }
 
         // Fast incremental append for unlimited bulk uploads without full DOM rebuilds
@@ -1227,10 +1258,11 @@
             innerWrapper.className = 'relative w-full h-full rounded-xl overflow-hidden bg-slate-50';
 
             const img = document.createElement('img');
-            img.src = item.url;
             img.alt = item.name || 'Study Material';
             img.loading = 'lazy';
+            img.decoding = 'async';
             img.className = 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out';
+            img.src = item.url;
 
             // Subtle dark overlay on hover
             const hoverOverlay = document.createElement('div');
@@ -1286,12 +1318,12 @@
             });
 
             innerWrapper.appendChild(img);
-            if (isOwner && isCloudActive && !lastCloudError && !cloudItems.some((c) => c.id === item.id)) {
+            if (isOwner && isCloudActive && !lastCloudError && !cloudItemIds.has(item.id)) {
                 const tag = document.createElement('span');
                 tag.className = 'absolute bottom-2 left-2 z-10 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow';
                 tag.textContent = 'Not public yet';
                 innerWrapper.appendChild(tag);
-            } else if (isOwner && lastCloudError && !cloudItems.some((c) => c.id === item.id)) {
+            } else if (isOwner && lastCloudError && !cloudItemIds.has(item.id)) {
                 const tag = document.createElement('span');
                 tag.className = 'absolute bottom-2 left-2 z-10 px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold shadow';
                 tag.textContent = 'Only on this device';
@@ -1668,6 +1700,7 @@
             await idbSetMeta('deletedEmbeddedIds', Array.from(deletedEmbeddedIds));
             localItems = localItems.filter((item) => !actuallyDeletedIds.has(item.id));
             cloudItems = cloudItems.filter((item) => !actuallyDeletedIds.has(item.id));
+            cloudItemIds = new Set(cloudItems.map((item) => item.id));
 
             isProcessingQueue = false;
             rebuildGalleryItems();
@@ -2404,6 +2437,7 @@
                             }
                         });
                         cloudItems = items;
+                        cloudItemIds = new Set(items.map((item) => item.id));
                         // Cache in the background; never wait for IndexedDB before showing cloud results.
                         persistCloudSnapshotToLocalCache(items).catch((cacheErr) => console.warn('Local cloud cache skipped:', cacheErr));
                         isCloudActive = true;
