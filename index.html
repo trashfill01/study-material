@@ -1519,42 +1519,194 @@
             }
         }
 
+        // ==========================================
+        // FAST UPLOAD ENGINE
+        // - one decode per image (full image + thumbnail made together)
+        // - worker pool: many images compress at the same time
+        // - cloud upload runs in the background while the next images compress
+        // ==========================================
+        const CLOUD_BATCH_SIZE = 6; // images per Firestore write (~2.5 MB, safely under the 10 MB limit)
+
+        async function decodeForUpload(file) {
+            if (typeof createImageBitmap === 'function') {
+                try {
+                    const bmp = await createImageBitmap(file);
+                    return { src: bmp, w: bmp.width, h: bmp.height, close: () => { try { bmp.close(); } catch (e) {} } };
+                } catch (e) { /* fall back to <img> below */ }
+            }
+            const objectUrl = URL.createObjectURL(file);
+            try {
+                const img = new Image();
+                img.decoding = 'async';
+                await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = objectUrl; });
+                return { src: img, w: img.naturalWidth || img.width, h: img.naturalHeight || img.height, close: () => {} };
+            } finally {
+                URL.revokeObjectURL(objectUrl);
+            }
+        }
+
+        function canvasToBlobAsync(canvas, type, quality) {
+            return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+        }
+
+        function blobToDataURLAsync(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        // Returns { url: full image (data URL), thumb: small preview (data URL) }
+        async function processImageForUpload(file, maxDimension = 1050, quality = 0.65) {
+            // Tiny WebP/JPEG files are kept as they are
+            if (file.size <= 140 * 1024 && (file.type === 'image/webp' || file.type === 'image/jpeg')) {
+                const url = await blobToDataURLAsync(file);
+                const thumb = await makeThumbFromDataUrl(url);
+                return { url, thumb };
+            }
+
+            const dec = await decodeForUpload(file);
+            try {
+                let w = dec.w, h = dec.h;
+                if (w > maxDimension || h > maxDimension) {
+                    if (w > h) { h = Math.round((h * maxDimension) / w); w = maxDimension; }
+                    else { w = Math.round((w * maxDimension) / h); h = maxDimension; }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                const ctx = canvas.getContext('2d', { alpha: false });
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, w, h);
+                ctx.drawImage(dec.src, 0, 0, w, h);
+
+                // Thumbnail from the canvas we already have (no second decode)
+                let thumb = '';
+                try {
+                    const TMAX = 420;
+                    let tw = w, th = h;
+                    if (tw > TMAX || th > TMAX) {
+                        if (tw > th) { th = Math.round((th * TMAX) / tw); tw = TMAX; }
+                        else { tw = Math.round((tw * TMAX) / th); th = TMAX; }
+                    }
+                    const tc = document.createElement('canvas');
+                    tc.width = tw; tc.height = th;
+                    const tctx = tc.getContext('2d', { alpha: false });
+                    tctx.fillStyle = '#FFFFFF';
+                    tctx.fillRect(0, 0, tw, th);
+                    tctx.drawImage(canvas, 0, 0, tw, th);
+                    thumb = tc.toDataURL('image/webp', 0.6);
+                    if (!thumb || thumb.indexOf('data:image/webp') !== 0) thumb = tc.toDataURL('image/jpeg', 0.6);
+                    tc.width = 1; tc.height = 1;
+                } catch (e) { thumb = ''; }
+
+                let blob = await canvasToBlobAsync(canvas, 'image/webp', quality);
+                if (!blob) { canvas.width = 1; canvas.height = 1; return { url: '', thumb: '' }; }
+                if (blob.size > 480 * 1024) {
+                    const smaller = await canvasToBlobAsync(canvas, 'image/jpeg', 0.5);
+                    if (smaller) blob = smaller;
+                }
+                canvas.width = 1; canvas.height = 1;
+                const url = await blobToDataURLAsync(blob);
+                return { url, thumb };
+            } finally {
+                dec.close();
+            }
+        }
+
+        // Sends images to Firebase in groups, several groups at the same time. Never throws.
+        async function uploadItemsToCloudParallel(items) {
+            if (!isCloudActive || !db || !firestoreModules) return 0;
+            const { writeBatch } = firestoreModules;
+            const groups = [];
+            for (let i = 0; i < items.length; i += CLOUD_BATCH_SIZE) groups.push(items.slice(i, i + CLOUD_BATCH_SIZE));
+            let ok = 0;
+            await Promise.all(groups.map(async (subBatch) => {
+                try {
+                    if (typeof writeBatch === 'function') {
+                        const batch = writeBatch(db);
+                        subBatch.forEach((item) => {
+                            batch.set(getFullDocRef(item.id), cloudFullPayload(item));
+                            batch.set(getImageDocRef(item.id), cloudMetaPayload(item));
+                        });
+                        await batch.commit();
+                    } else {
+                        await Promise.all(subBatch.map((item) => writeItemToCloud(item)));
+                    }
+                    ok += subBatch.length;
+                    lastCloudError = null;
+                } catch (err) {
+                    console.error('Cloud group write failed, retrying one by one:', err);
+                    for (const item of subBatch) {
+                        try {
+                            await writeItemToCloud(item);
+                            ok++;
+                            lastCloudError = null;
+                        } catch (singleErr) {
+                            console.error('Single image write failed:', singleErr);
+                            lastCloudError = singleErr.code || singleErr.message || 'permission-denied';
+                        }
+                    }
+                }
+            }));
+            return ok;
+        }
+
         async function processUnlimitedUploadQueue() {
             isProcessingQueue = true;
-            const CONCURRENCY = 12; // Parallel image compression in browser
-            const CLOUD_BATCH_SIZE = 8; // Fewer network round trips; compressed images stay within Firestore request limits.
+            const WORKERS = Math.max(3, Math.min(6, navigator.hardwareConcurrency || 4)); // images processed at the same time
+            const MAX_CLOUD_JOBS_IN_FLIGHT = 3; // uploads running in the background at once
             let cloudSuccessCount = 0;
+            const pendingCloudJobs = new Set();
+            let readyBuffer = [];
+            let seq = 0;
 
-            while (uploadQueue.length > 0 && !isUploadCancelled) {
-                const chunk = uploadQueue.splice(0, CONCURRENCY);
-                const newlyCreatedItems = [];
+            const flushReady = async (force) => {
+                if (!readyBuffer.length) return;
+                if (!force && readyBuffer.length < CLOUD_BATCH_SIZE) return;
+                const items = readyBuffer;
+                readyBuffer = [];
+                items.sort((a, b) => a.createdAt - b.createdAt);
 
-                showUploadProgressUI(
-                    processedInSession,
-                    totalQueuedInSession,
-                    `Turbo processing ${chunk.length} images...`,
-                    'Uploading Study Material...',
-                    true
-                );
+                // Start the cloud upload in the background (does NOT make the next images wait)
+                const job = uploadItemsToCloudParallel(items)
+                    .then((n) => { cloudSuccessCount += n; })
+                    .catch(() => {})
+                    .then(() => { pendingCloudJobs.delete(job); });
+                pendingCloudJobs.add(job);
 
-                // 1. Compress all images in the chunk concurrently off the main thread
-                await Promise.all(chunk.map(async (file, idx) => {
+                // Save on this device and show in the gallery right away
+                await idbBulkSaveImages(items);
+                localItems.push(...items);
+                appendItemsToGalleryDOM(items);
+                updateCloudStatusBadge();
+            };
+
+            const worker = async () => {
+                while (!isUploadCancelled) {
+                    // If too many uploads are waiting on the network, pause a moment (saves phone memory)
+                    while (pendingCloudJobs.size >= MAX_CLOUD_JOBS_IN_FLIGHT && !isUploadCancelled) {
+                        await Promise.race(Array.from(pendingCloudJobs));
+                    }
                     if (isUploadCancelled) return;
+                    const file = uploadQueue.shift();
+                    if (!file) return;
+
+                    // Order number is given when the file is picked, so the gallery keeps your selection order
+                    const sequenceTime = Date.now() + (seq++);
+                    let item = null;
                     try {
-                        const dataUrl = await compressImageToDataURL(file, 1050, 0.65);
-                        if (isUploadCancelled || !dataUrl) return;
-
-                        const thumbDataUrl = await makeThumbFromDataUrl(dataUrl);
-                        const sequenceTime = Date.now() + processedInSession + idx;
-                        const newItem = {
-                            id: 'img_' + sequenceTime + '_' + Math.random().toString(36).substring(2, 9),
-                            name: file.name || `study-note-${sequenceTime}.jpg`,
-                            url: dataUrl,
-                            thumb: thumbDataUrl,
-                            createdAt: sequenceTime
-                        };
-
-                        newlyCreatedItems.push(newItem);
+                        const processed = await processImageForUpload(file, 1050, 0.65);
+                        if (!isUploadCancelled && processed.url) {
+                            item = {
+                                id: 'img_' + sequenceTime + '_' + Math.random().toString(36).substring(2, 9),
+                                name: file.name || `study-note-${sequenceTime}.jpg`,
+                                url: processed.url,
+                                thumb: processed.thumb,
+                                createdAt: sequenceTime
+                            };
+                        }
                     } catch (err) {
                         console.error('Failed to compress image:', err);
                     } finally {
@@ -1569,72 +1721,26 @@
                             );
                         }
                     }
-                }));
-
-                if (isUploadCancelled) {
-                    uploadQueue.length = 0;
-                    break;
+                    if (item) {
+                        readyBuffer.push(item);
+                        await flushReady(false);
+                    }
                 }
+            };
 
-                if (newlyCreatedItems.length > 0) {
-                    // Sort chunk to preserve order
-                    newlyCreatedItems.sort((a, b) => a.createdAt - b.createdAt);
-
-                    // 2. Save entire chunk in a SINGLE IndexedDB transaction (~2ms)
-                    const localBulkPromise = idbBulkSaveImages(newlyCreatedItems);
-
-                    // 3. Push to Firebase Cloud in safe 4-image sub-batches so payload stays well under Firestore's 10MB limit
-                    let cloudBatchPromise = (async () => {
-                        if (!isCloudActive || !db || !firestoreModules) return;
-                        const { writeBatch, setDoc } = firestoreModules;
-
-                        for (let i = 0; i < newlyCreatedItems.length; i += CLOUD_BATCH_SIZE) {
-                            if (isUploadCancelled) break;
-                            const subBatch = newlyCreatedItems.slice(i, i + CLOUD_BATCH_SIZE);
-                            try {
-                                if (typeof writeBatch === 'function') {
-                                    const batch = writeBatch(db);
-                                    subBatch.forEach((item) => {
-                                        batch.set(getFullDocRef(item.id), cloudFullPayload(item));
-                                            batch.set(getImageDocRef(item.id), cloudMetaPayload(item));
-                                    });
-                                    await batch.commit();
-                                } else {
-                                    await Promise.all(
-                                        subBatch.map((item) =>
-                                            writeItemToCloud(item)
-                                        )
-                                    );
-                                }
-                                cloudSuccessCount += subBatch.length;
-                                lastCloudError = null;
-                            } catch (err) {
-                                console.error('Cloud sub-batch write failed, retrying individually:', err);
-                                // Fallback: write each image individually in case one doc was slightly too large
-                                for (const item of subBatch) {
-                                    try {
-                                        await writeItemToCloud(item);
-                                        cloudSuccessCount++;
-                                        lastCloudError = null;
-                                    } catch (singleErr) {
-                                        console.error('Single doc write failed:', singleErr);
-                                        lastCloudError = singleErr.code || singleErr.message || 'permission-denied';
-                                    }
-                                }
-                            }
-                        }
-                    })();
-
-                    await Promise.all([localBulkPromise, cloudBatchPromise]);
-
-                    localItems.push(...newlyCreatedItems);
-                    appendItemsToGalleryDOM(newlyCreatedItems);
-                    updateCloudStatusBadge();
-                }
-
+            while (uploadQueue.length > 0 && !isUploadCancelled) {
+                await Promise.all(Array.from({ length: WORKERS }, () => worker()));
+                await flushReady(true);
                 // Brief yield so the Cancel button click registers immediately
                 await new Promise((r) => setTimeout(r, 10));
             }
+            if (isUploadCancelled) uploadQueue.length = 0;
+            await flushReady(true);
+
+            if (pendingCloudJobs.size > 0 && !isUploadCancelled) {
+                showUploadProgressUI(processedInSession, totalQueuedInSession, 'Finishing upload to cloud...', 'Uploading Study Material...', true);
+            }
+            await Promise.all(Array.from(pendingCloudJobs));
 
             const uploadedCount = processedInSession;
             const wasCancelled = isUploadCancelled;
