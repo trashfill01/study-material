@@ -314,10 +314,11 @@
                     </svg>
                 </button>
             </div>
-            <p id="owner-modal-desc" class="text-slate-500 text-xs sm:text-sm mb-5 leading-relaxed">Create a password to protect uploads. Only you will use this to add or delete images.</p>
+            <p id="owner-modal-desc" class="text-slate-500 text-xs sm:text-sm mb-5 leading-relaxed">Sign in with the owner account created in Firebase Authentication. Visitors can view materials, but only the owner account can make changes.</p>
             <form id="owner-form" class="space-y-4">
-                <input id="owner-pin-input" type="password" required="" placeholder="Enter Owner Password" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none text-sm text-slate-800 transition">
-                <button id="owner-submit-btn" type="submit" class="w-full py-3 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-md shadow-blue-500/20 transition">Save &amp; Unlock</button>
+                <input id="owner-email-input" type="email" required autocomplete="username" placeholder="Owner email address" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none text-sm text-slate-800 transition">
+                <input id="owner-pin-input" type="password" required autocomplete="current-password" placeholder="Firebase account password" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none text-sm text-slate-800 transition">
+                <button id="owner-submit-btn" type="submit" class="w-full py-3 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-md shadow-blue-500/20 transition">Sign In &amp; Unlock</button>
             </form>
         </div>
     </div>
@@ -655,6 +656,7 @@
         const ownerModalDesc = document.getElementById('owner-modal-desc');
         const ownerForm = document.getElementById('owner-form');
         const ownerPinInput = document.getElementById('owner-pin-input');
+        const ownerEmailInput = document.getElementById('owner-email-input');
         const ownerCancelBtn = document.getElementById('owner-cancel-btn');
         const ownerSubmitBtn = document.getElementById('owner-submit-btn');
 
@@ -1082,7 +1084,7 @@
                 cloudModalBadge.className = 'text-xs font-semibold text-red-600';
                 if (cloudDiagnosticBox) {
                     cloudDiagnosticBox.className = 'p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 font-medium';
-                    cloudDiagnosticBox.innerHTML = `<b>Public Cloud Blocked (${lastCloudError}):</b><br/>Visitors cannot see images because Firestore is refusing access. Open Firebase Console → <b>Firestore Database</b> → <b>Rules</b>, paste this and click <b>Publish</b>:<pre class="bg-white px-2 py-1.5 rounded border border-red-200 mt-1 text-[11px] whitespace-pre-wrap">rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /{document=**} {\n      allow read, write: if true;\n    }\n  }\n}</pre>Then reload and press <b>Sync Local Images to Cloud Now</b>.`;
+                    cloudDiagnosticBox.innerHTML = `<b>Public Cloud Blocked (${lastCloudError}):</b><br/>Firestore rules denied this request. Check the published rules and make sure you are signed in with the owner Firebase account before uploading. Do not enable public writes; that would let visitors change or delete your materials.`;
                 }
                 return;
             }
@@ -2086,17 +2088,6 @@
                 }
             }
 
-            if (storedOwnerHash) {
-                try {
-                    await setDoc(getOwnerConfigDocRef(), {
-                        pinHash: storedOwnerHash,
-                        updatedAt: Date.now()
-                    });
-                } catch (e) {
-                    console.warn('Owner hash sync skipped:', e);
-                }
-            }
-
             updateCloudStatusBadge();
 
             if (!silent) {
@@ -2387,47 +2378,33 @@
         // ==========================================
         async function openOwnerModal() {
             if (isOwner) {
+                try {
+                    if (auth) {
+                        const { signOut } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+                        await signOut(auth);
+                    }
+                } catch (err) {
+                    console.warn('Firebase sign-out warning:', err);
+                }
+                currentUser = null;
                 isOwner = false;
                 updateOwnerUI();
-                showToast('Locked: Switched to Public View Mode');
+                showToast('Owner session locked.');
                 return;
             }
 
-            // Use cached/embedded owner hash immediately; never wait on the network
-            if (isCloudActive && db && firestoreModules) {
-                Promise.race([
-                    firestoreModules.getDoc(getOwnerConfigDocRef()),
-                    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 2500))
-                ]).then(async (snap) => {
-                    if (snap && snap.exists() && snap.data().pinHash) {
-                        storedOwnerHash = snap.data().pinHash;
-                        await idbSetMeta('ownerPinHash', storedOwnerHash);
-                    }
-                }).catch(() => {});
-            }
-
-            if (!storedOwnerHash) {
-                const localHash = await idbGetMeta('ownerPinHash');
-                if (localHash) storedOwnerHash = localHash;
-            }
-
-            if (storedOwnerHash) {
-                ownerModalTitle.textContent = 'Owner Access';
-                ownerModalDesc.textContent = 'Enter your Owner Password to upload or delete study material.';
-                ownerSubmitBtn.textContent = 'Unlock';
-            } else {
-                ownerModalTitle.textContent = 'Set Owner Password';
-                ownerModalDesc.textContent = 'Create a password to protect uploads. Only you will use this to add or delete images.';
-                ownerSubmitBtn.textContent = 'Save & Unlock';
-            }
-
+            ownerModalTitle.textContent = 'Owner Sign In';
+            ownerModalDesc.textContent = 'Use the email and password of the owner account created in Firebase Authentication.';
+            ownerSubmitBtn.textContent = 'Sign In & Unlock';
+            ownerEmailInput.value = '';
             ownerPinInput.value = '';
             ownerModal.classList.remove('hidden');
-            setTimeout(() => ownerPinInput.focus(), 50);
+            setTimeout(() => ownerEmailInput.focus(), 50);
         }
 
         function closeOwnerModal() {
             ownerModal.classList.add('hidden');
+            ownerEmailInput.value = '';
             ownerPinInput.value = '';
         }
 
@@ -2439,46 +2416,38 @@
 
         ownerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const rawPin = ownerPinInput.value.trim();
-            if (!rawPin) return;
+            const email = ownerEmailInput.value.trim();
+            const password = ownerPinInput.value;
+            if (!email || !password) return;
+            if (!auth || !isCloudActive) {
+                showToast('Firebase is not connected. Please wait and try again.');
+                return;
+            }
 
-            const inputHash = await hashString(rawPin);
-
-            if (!storedOwnerHash) {
-                // First time setup: save Owner PIN hash locally AND to Cloud if available
-                storedOwnerHash = inputHash;
-                await idbSetMeta('ownerPinHash', inputHash);
-
-                if (isCloudActive && db && firestoreModules) {
-                    try {
-                        const { setDoc } = firestoreModules;
-                        const configRef = getOwnerConfigDocRef();
-                        await setDoc(configRef, {
-                            pinHash: inputHash,
-                            updatedAt: Date.now()
-                        });
-                    } catch (err) {
-                        console.warn('Saved owner password locally:', err);
-                    }
-                }
-
+            ownerSubmitBtn.disabled = true;
+            ownerSubmitBtn.textContent = 'Signing in...';
+            try {
+                const { signInWithEmailAndPassword } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+                const credential = await signInWithEmailAndPassword(auth, email, password);
+                currentUser = credential.user;
                 isOwner = true;
                 updateOwnerUI();
                 closeOwnerModal();
-                showToast('Owner password saved! Syncing with Live Cloud...');
+                showToast('Firebase owner account signed in. Syncing study materials...');
                 await syncAllImagesToCloud(true);
-            } else {
-                // Verify against stored hash
-                if (inputHash === storedOwnerHash) {
-                    isOwner = true;
-                    updateOwnerUI();
-                    closeOwnerModal();
-                    showToast('Owner mode unlocked! You can now upload or delete.');
-                    await syncAllImagesToCloud(true);
-                } else {
-                    ownerPinInput.value = '';
-                    showToast('Incorrect Owner Password');
-                }
+            } catch (err) {
+                console.error('Owner sign-in failed:', err);
+                const code = err && err.code ? err.code : '';
+                const message = code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found'
+                    ? 'Incorrect owner email or password.'
+                    : code === 'auth/operation-not-allowed'
+                        ? 'Enable Email/Password sign-in in Firebase Authentication first.'
+                        : `Owner sign-in failed (${code || 'network-error'}).`;
+                showToast(message);
+                ownerPinInput.value = '';
+            } finally {
+                ownerSubmitBtn.disabled = false;
+                ownerSubmitBtn.textContent = 'Sign In & Unlock';
             }
         });
 
