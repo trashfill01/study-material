@@ -99,6 +99,22 @@
             transition: none;
             cursor: grabbing !important;
         }
+        .gallery-scroll-cue {
+            position: fixed; left: 50%; bottom: 18px; z-index: 25;
+            transform: translateX(-50%); display: flex; align-items: center; gap: 9px;
+            padding: 10px 16px; border-radius: 999px; color: #fff;
+            background: rgba(15, 23, 42, .84); box-shadow: 0 8px 28px rgba(15, 23, 42, .22);
+            font-size: 12px; font-weight: 600; pointer-events: none;
+            animation: scrollCueFloat 1.15s ease-in-out infinite alternate;
+            backdrop-filter: blur(8px);
+        }
+        .gallery-scroll-cue.hidden { display: none; }
+        .scroll-cue-arrows { font-size: 17px; line-height: 1; color: #93c5fd; }
+        @keyframes scrollCueFloat {
+            from { opacity: .78; transform: translate(-50%, 0); }
+            to { opacity: 1; transform: translate(-50%, -7px); }
+        }
+        @media (prefers-reduced-motion: reduce) { .gallery-scroll-cue { animation: none; } }
     </style>
     <style id="bx-intro-styles">
         /* ===== Cinematic bomb → energy-burst intro (compositor-friendly: transform + opacity only) ===== */
@@ -244,6 +260,10 @@
 
             <!-- Responsive Image Grid -->
             <div id="gallery-grid" class="hidden grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6"></div>
+            <div id="gallery-scroll-cue" class="gallery-scroll-cue hidden" aria-hidden="true">
+                <span class="scroll-cue-arrows">↓ ↑</span>
+                <span>Scroll to explore more images</span>
+            </div>
 
         </div>
 
@@ -273,20 +293,12 @@
                 <span>Export HTML for Web Host</span>
             </button>
 
-            <!-- Select All / Deselect All Button (Visible ONLY when Owner is unlocked & images exist) -->
-            <button id="select-all-btn" type="button" title="Select or Deselect all images" class="hidden px-3.5 py-2.5 rounded-full bg-white/95 hover:bg-blue-50 text-slate-700 hover:text-blue-600 border border-slate-200 shadow-sm backdrop-blur-md transition-all duration-200 flex items-center gap-1.5 text-xs font-semibold">
-                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <span id="select-all-label">Select All</span>
-            </button>
-
-            <!-- Delete Selected / Delete All Button (Visible ONLY when Owner is unlocked & images exist) -->
-            <button id="delete-selected-btn" type="button" title="Delete selected or all images" class="hidden px-4 py-2.5 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-500/25 transition-all duration-200 flex items-center gap-1.5 text-xs font-semibold">
+            <!-- Delete All Images Button (Visible ONLY when Owner is unlocked & images exist) -->
+            <button id="delete-selected-btn" type="button" title="Delete all images" class="hidden px-4 py-2.5 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-500/25 transition-all duration-200 flex items-center gap-1.5 text-xs font-semibold">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path>
                 </svg>
-                <span id="delete-selected-label">Delete All</span>
+                <span id="delete-selected-label">Delete All Images</span>
             </button>
         </div>
 
@@ -631,10 +643,7 @@
         const galleryGrid = document.getElementById('gallery-grid');
         const uploadFab = document.getElementById('upload-fab');
         const exportSiteBtn = document.getElementById('export-site-btn');
-        const selectAllBtn = document.getElementById('select-all-btn');
-        const selectAllLabel = document.getElementById('select-all-label');
         const deleteSelectedBtn = document.getElementById('delete-selected-btn');
-        const deleteSelectedLabel = document.getElementById('delete-selected-label');
         const deleteConfirmModal = document.getElementById('delete-confirm-modal');
         const deleteConfirmTitle = document.getElementById('delete-confirm-title');
         const deleteConfirmDesc = document.getElementById('delete-confirm-desc');
@@ -1134,7 +1143,6 @@
             } else {
                 uploadFab.classList.add('hidden');
                 exportSiteBtn.classList.add('hidden');
-                selectAllBtn.classList.add('hidden');
                 deleteSelectedBtn.classList.add('hidden');
                 cloudSetupBtn.classList.add('hidden');
                 selectedIds.clear();
@@ -1156,69 +1164,16 @@
                 }
             });
 
-            const selectButtons = galleryGrid.querySelectorAll('.select-card-btn');
-            selectButtons.forEach((btn) => {
-                if (isOwner) {
-                    btn.classList.remove('hidden');
-                } else {
-                    btn.classList.add('hidden');
-                }
-            });
-
             updateSelectionUI();
         }
 
         function updateSelectionUI() {
             if (!isOwner || galleryItems.length === 0) {
-                selectAllBtn.classList.add('hidden');
                 deleteSelectedBtn.classList.add('hidden');
                 return;
             }
-
-            selectAllBtn.classList.remove('hidden');
             deleteSelectedBtn.classList.remove('hidden');
-
-            const total = galleryItems.length;
-            const selCount = selectedIds.size;
-
-            if (selCount === total && total > 0) {
-                selectAllLabel.textContent = `Deselect All (${total})`;
-            } else if (selCount > 0) {
-                selectAllLabel.textContent = `Select All (${selCount}/${total})`;
-            } else {
-                selectAllLabel.textContent = `Select All (${total})`;
-            }
-
-            if (selCount > 0) {
-                deleteSelectedLabel.textContent = `Delete Selected (${selCount})`;
-            } else {
-                deleteSelectedLabel.textContent = `Delete All (${total})`;
-            }
-
-            // Sync visual state on all cards
-            const cards = galleryGrid.querySelectorAll('.gallery-card');
-            cards.forEach((card) => {
-                const id = card.dataset.id;
-                const isSelected = selectedIds.has(id);
-                const checkBtn = card.querySelector('.select-card-btn');
-                if (isSelected) {
-                    card.classList.add('ring-4', 'ring-blue-500', 'border-blue-500');
-                    if (checkBtn) {
-                        checkBtn.className = `select-card-btn ${isOwner ? '' : 'hidden'} absolute top-2.5 left-2.5 z-10 w-8 h-8 rounded-full bg-blue-600 text-white shadow-md flex items-center justify-center transition-all duration-200 scale-105`;
-                        checkBtn.innerHTML = `
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                            </svg>
-                        `;
-                    }
-                } else {
-                    card.classList.remove('ring-4', 'ring-blue-500', 'border-blue-500');
-                    if (checkBtn) {
-                        checkBtn.className = `select-card-btn ${isOwner ? '' : 'hidden'} absolute top-2.5 left-2.5 z-10 w-8 h-8 rounded-full bg-white/90 hover:bg-blue-50 text-slate-400 hover:text-blue-600 border border-slate-300 shadow-md backdrop-blur-md flex items-center justify-center transition-all duration-200`;
-                        checkBtn.innerHTML = `<span class="w-3.5 h-3.5 rounded-full border-2 border-current"></span>`;
-                    }
-                }
-            });
+            deleteSelectedBtn.title = 'Delete all images';
         }
 
         // ==========================================
@@ -1378,7 +1333,7 @@
         // ==========================================
         // GALLERY RENDERING & STATE UPDATES
         // ==========================================
-        const GALLERY_RENDER_BATCH_SIZE = 48;
+        const GALLERY_RENDER_BATCH_SIZE = 18;
         let galleryRenderVersion = 0;
 
         function renderGallery() {
@@ -1455,9 +1410,8 @@
         }
 
         function createGalleryCardElement(item) {
-            const isSelected = selectedIds.has(item.id);
             const card = document.createElement('div');
-            card.className = `gallery-card group relative aspect-[4/3] bg-white rounded-2xl p-2 shadow-sm hover:shadow-xl hover:shadow-blue-500/10 border border-blue-100/80 transition-all duration-300 cursor-pointer overflow-hidden ${isSelected ? 'ring-4 ring-blue-500 border-blue-500' : ''}`;
+            card.className = 'gallery-card group relative aspect-[4/3] bg-white rounded-2xl p-2 shadow-sm hover:shadow-xl hover:shadow-blue-500/10 border border-blue-100/80 transition-all duration-300 cursor-pointer overflow-hidden';
             card.dataset.id = item.id;
 
             const innerWrapper = document.createElement('div');
@@ -1465,37 +1419,15 @@
 
             const img = document.createElement('img');
             img.alt = item.name || 'Study Material';
-            img.loading = 'lazy';
+            img.loading = galleryGrid.children.length < 18 ? 'eager' : 'lazy';
             img.decoding = 'async';
+            if (galleryGrid.children.length < 18) img.fetchPriority = 'high';
             img.className = 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out';
             img.src = item.thumb || item.url;
 
             // Subtle dark overlay on hover
             const hoverOverlay = document.createElement('div');
             hoverOverlay.className = 'absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-slate-900/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none';
-
-            // Select Checkbox Button (Top-Left, ONLY visible when isOwner is true)
-            const selectBtn = document.createElement('button');
-            selectBtn.type = 'button';
-            selectBtn.title = 'Select image';
-            selectBtn.setAttribute('aria-label', 'Select image');
-            selectBtn.className = isSelected
-                ? `select-card-btn ${isOwner ? '' : 'hidden'} absolute top-2.5 left-2.5 z-10 w-8 h-8 rounded-full bg-blue-600 text-white shadow-md flex items-center justify-center transition-all duration-200 scale-105`
-                : `select-card-btn ${isOwner ? '' : 'hidden'} absolute top-2.5 left-2.5 z-10 w-8 h-8 rounded-full bg-white/90 hover:bg-blue-50 text-slate-400 hover:text-blue-600 border border-slate-300 shadow-md backdrop-blur-md flex items-center justify-center transition-all duration-200`;
-            selectBtn.innerHTML = isSelected
-                ? `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`
-                : `<span class="w-3.5 h-3.5 rounded-full border-2 border-current"></span>`;
-
-            selectBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (!isOwner) return;
-                if (selectedIds.has(item.id)) {
-                    selectedIds.delete(item.id);
-                } else {
-                    selectedIds.add(item.id);
-                }
-                updateSelectionUI();
-            });
 
             // Delete Individual Image Button (ONLY visible when isOwner is true)
             const deleteBtn = document.createElement('button');
@@ -1536,7 +1468,6 @@
                 innerWrapper.appendChild(tag);
             }
             innerWrapper.appendChild(hoverOverlay);
-            innerWrapper.appendChild(selectBtn);
             innerWrapper.appendChild(deleteBtn);
             card.appendChild(innerWrapper);
 
@@ -1727,7 +1658,7 @@
 
         async function processUnlimitedUploadQueue() {
             isProcessingQueue = true;
-            const WORKERS = Math.max(3, Math.min(6, navigator.hardwareConcurrency || 4)); // images processed at the same time
+            const WORKERS = Math.max(4, Math.min(8, navigator.hardwareConcurrency || 6)); // faster parallel image processing
             const MAX_CLOUD_JOBS_IN_FLIGHT = 3; // uploads running in the background at once
             let cloudSuccessCount = 0;
             const pendingCloudJobs = new Set();
@@ -1769,7 +1700,7 @@
                     const sequenceTime = Date.now() + (seq++);
                     let item = null;
                     try {
-                        const processed = await processImageForUpload(file, 1050, 0.65);
+                        const processed = await processImageForUpload(file, 1000, 0.62);
                         if (!isUploadCancelled && processed.url) {
                             item = {
                                 id: 'img_' + sequenceTime + '_' + Math.random().toString(36).substring(2, 9),
@@ -1871,34 +1802,11 @@
         // ==========================================
         let pendingBulkDeleteIds = [];
 
-        selectAllBtn.addEventListener('click', () => {
-            if (!isOwner || galleryItems.length === 0) return;
-            if (selectedIds.size === galleryItems.length) {
-                // Deselect all
-                selectedIds.clear();
-            } else {
-                // Select all
-                galleryItems.forEach((item) => selectedIds.add(item.id));
-            }
-            updateSelectionUI();
-        });
-
         deleteSelectedBtn.addEventListener('click', () => {
             if (!isOwner || galleryItems.length === 0) return;
-
-            if (selectedIds.size > 0) {
-                pendingBulkDeleteIds = Array.from(selectedIds);
-                deleteConfirmTitle.textContent = `Delete ${pendingBulkDeleteIds.length} Selected Image${pendingBulkDeleteIds.length === 1 ? '' : 's'}?`;
-                deleteConfirmDesc.textContent = `Are you sure you want to permanently delete ${pendingBulkDeleteIds.length} selected study material image${pendingBulkDeleteIds.length === 1 ? '' : 's'} from your gallery and cloud database?`;
-            } else {
-                // If none specifically checked, select all and confirm deleting all
-                galleryItems.forEach((item) => selectedIds.add(item.id));
-                updateSelectionUI();
-                pendingBulkDeleteIds = Array.from(selectedIds);
-                deleteConfirmTitle.textContent = `Delete All ${pendingBulkDeleteIds.length} Images?`;
-                deleteConfirmDesc.textContent = `Are you sure you want to permanently delete all ${pendingBulkDeleteIds.length} study material images at once from your gallery and cloud database?`;
-            }
-
+            pendingBulkDeleteIds = galleryItems.map((item) => item.id);
+            deleteConfirmTitle.textContent = `Delete All ${pendingBulkDeleteIds.length} Images?`;
+            deleteConfirmDesc.textContent = `Are you sure you want to permanently delete all ${pendingBulkDeleteIds.length} study material images from your gallery and cloud database?`;
             deleteConfirmModal.classList.remove('hidden');
         });
 
@@ -2557,6 +2465,13 @@
                         galleryScreen.classList.remove('opacity-0');
                         galleryScreen.classList.add('opacity-100');
                     });
+                    const scrollCue = document.getElementById('gallery-scroll-cue');
+                    if (scrollCue && galleryItems.length > 1) {
+                        scrollCue.classList.remove('hidden');
+                        const hideCue = () => scrollCue.classList.add('hidden');
+                        window.addEventListener('scroll', hideCue, { once: true, passive: true });
+                        setTimeout(hideCue, 4500);
+                    }
                 }
 
                 function finish() {
