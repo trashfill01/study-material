@@ -872,26 +872,30 @@
                 ? window.__EMBEDDED_GALLERY_DATA__.images
                 : [];
             embeddedList.forEach((item) => {
-                if (item && item.id && item.url && !deletedEmbeddedIds.has(item.id)) {
+                if (item && item.id && (item.url || item.thumb) && !deletedEmbeddedIds.has(item.id)) {
                     map.set(item.id, item);
                 }
             });
 
             // 2. Local IndexedDB images
             localItems.forEach((item) => {
-                if (item && item.id && item.url) {
+                if (item && item.id && (item.url || item.thumb)) {
                     map.set(item.id, item);
                 }
             });
 
             // 3. Live Cloud images (if cloud is active)
             cloudItems.forEach((item) => {
-                if (item && item.id && item.url) {
+                if (item && item.id && (item.url || item.thumb)) {
+                    const prev = map.get(item.id);
+                    if (!item.url && prev && prev.url) item.url = prev.url;
+                    if (!item.thumb && prev && prev.thumb) item.thumb = prev.thumb;
                     map.set(item.id, item);
                 }
             });
 
             const merged = Array.from(map.values());
+            merged.forEach((i) => { if (!i.url && fullUrlCache.has(i.id)) i.url = fullUrlCache.get(i.id); });
             merged.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
             galleryItems = merged;
 
@@ -1042,6 +1046,9 @@
                 lastAutoSyncAt = Date.now();
                 setTimeout(() => syncAllImagesToCloud(true), 800);
             }
+            if (isOwner && isCloudActive && !lastCloudError) {
+                setTimeout(() => migrateLegacyImages(), 3000);
+            }
             if (isOwner) {
                 uploadFab.classList.remove('hidden');
                 exportSiteBtn.classList.remove('hidden');
@@ -1153,6 +1160,133 @@
             return collection(db, 'artifacts', appId, 'public', 'data', 'study_images');
         }
 
+
+        function getFullDocRef(imageId) {
+            const { doc } = firestoreModules;
+            if (isUsingCustomCloud) {
+                return doc(db, 'study_full', imageId);
+            }
+            return doc(db, 'artifacts', appId, 'public', 'data', 'study_full', imageId);
+        }
+
+        // ==========================================
+        // FAST LOADING: small thumbnail in the gallery list, full image fetched only when opened
+        // ==========================================
+        const fullUrlCache = new Map();      // id -> full image data URL (kept in memory once opened)
+        const fullUrlPromises = new Map();   // id -> in-flight fetch
+
+        function makeThumbFromDataUrl(dataUrl, maxDimension = 420, quality = 0.6) {
+            return new Promise((resolve) => {
+                if (!dataUrl) return resolve('');
+                const img = new Image();
+                img.decoding = 'async';
+                img.onload = () => {
+                    try {
+                        let w = img.width, h = img.height;
+                        if (w > maxDimension || h > maxDimension) {
+                            if (w > h) { h = Math.round(h * maxDimension / w); w = maxDimension; }
+                            else { w = Math.round(w * maxDimension / h); h = maxDimension; }
+                        }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = w; canvas.height = h;
+                        const ctx = canvas.getContext('2d', { alpha: false });
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillRect(0, 0, w, h);
+                        ctx.drawImage(img, 0, 0, w, h);
+                        let out = canvas.toDataURL('image/webp', quality);
+                        if (!out || out.indexOf('data:image/webp') !== 0) out = canvas.toDataURL('image/jpeg', quality);
+                        canvas.width = 1; canvas.height = 1;
+                        resolve(out);
+                    } catch (e) { resolve(''); }
+                };
+                img.onerror = () => resolve('');
+                img.src = dataUrl;
+            });
+        }
+
+        // Small document shown in the list (no full image inside, so the list downloads fast)
+        function cloudMetaPayload(item) {
+            const base = {
+                name: item.name || 'study-material.jpg',
+                createdAt: item.createdAt || Date.now(),
+                uploadedBy: currentUser ? currentUser.uid : 'owner'
+            };
+            // If a thumbnail could not be made, fall back to the old single-document format
+            return item.thumb ? Object.assign(base, { thumb: item.thumb }) : Object.assign(base, { url: item.url });
+        }
+
+        function cloudFullPayload(item) {
+            return { url: item.url, createdAt: item.createdAt || Date.now() };
+        }
+
+        // Writes full image first, then the small list document
+        async function writeItemToCloud(item) {
+            const { setDoc } = firestoreModules;
+            await setDoc(getFullDocRef(item.id), cloudFullPayload(item));
+            await setDoc(getImageDocRef(item.id), cloudMetaPayload(item));
+        }
+
+        async function ensureFullUrl(item) {
+            if (!item) return '';
+            if (item.url) return item.url;
+            if (fullUrlCache.has(item.id)) { item.url = fullUrlCache.get(item.id); return item.url; }
+            if (fullUrlPromises.has(item.id)) return fullUrlPromises.get(item.id);
+            const p = (async () => {
+                try {
+                    const local = localItems.find((i) => i.id === item.id && i.url);
+                    if (local) { fullUrlCache.set(item.id, local.url); item.url = local.url; return local.url; }
+                } catch (e) {}
+                if (!isCloudActive || !db || !firestoreModules) return '';
+                try {
+                    const snap = await firestoreModules.getDoc(getFullDocRef(item.id));
+                    if (snap.exists() && snap.data().url) {
+                        fullUrlCache.set(item.id, snap.data().url);
+                        item.url = snap.data().url;
+                        return item.url;
+                    }
+                } catch (e) { console.warn('Full image fetch failed:', e); }
+                return '';
+            })();
+            fullUrlPromises.set(item.id, p);
+            p.then(() => fullUrlPromises.delete(item.id));
+            return p;
+        }
+
+        // One-time: move old images (full image inside list document) to the fast format
+        let isMigratingLegacy = false;
+        let lastMigrationTryAt = 0;
+        async function migrateLegacyImages() {
+            if (!isOwner || !isCloudActive || !db || !firestoreModules || isMigratingLegacy || lastCloudError) return;
+            if (Date.now() - lastMigrationTryAt < 60000) return;
+            const legacy = cloudItems.filter((i) => i.legacy && i.url);
+            if (!legacy.length) return;
+            lastMigrationTryAt = Date.now();
+            isMigratingLegacy = true;
+            let done = 0;
+            try {
+                showToast(`Optimizing ${legacy.length} old images so they load faster...`);
+                const { setDoc } = firestoreModules;
+                for (const item of legacy) {
+                    const thumb = await makeThumbFromDataUrl(item.url);
+                    if (!thumb) continue;
+                    await setDoc(getFullDocRef(item.id), cloudFullPayload(item));      // 1) save full copy first
+                    await setDoc(getImageDocRef(item.id), {                           // 2) then shrink the list document
+                        name: item.name || 'study-material.jpg',
+                        thumb: thumb,
+                        createdAt: item.createdAt || Date.now(),
+                        uploadedBy: currentUser ? currentUser.uid : 'owner'
+                    });
+                    done++;
+                }
+                if (done) showToast(`Done! ${done} old images optimized.`);
+            } catch (err) {
+                console.warn('Legacy image optimization stopped:', err);
+                showToast('Could not optimize old images. Check Firestore rules for the study_full collection.');
+            } finally {
+                isMigratingLegacy = false;
+            }
+        }
+
         function getImageDocRef(imageId) {
             const { doc } = firestoreModules;
             if (isUsingCustomCloud) {
@@ -1262,7 +1396,7 @@
             img.loading = 'lazy';
             img.decoding = 'async';
             img.className = 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out';
-            img.src = item.url;
+            img.src = item.thumb || item.url;
 
             // Subtle dark overlay on hover
             const hoverOverlay = document.createElement('div');
@@ -1410,11 +1544,13 @@
                         const dataUrl = await compressImageToDataURL(file, 1050, 0.65);
                         if (isUploadCancelled || !dataUrl) return;
 
+                        const thumbDataUrl = await makeThumbFromDataUrl(dataUrl);
                         const sequenceTime = Date.now() + processedInSession + idx;
                         const newItem = {
                             id: 'img_' + sequenceTime + '_' + Math.random().toString(36).substring(2, 9),
                             name: file.name || `study-note-${sequenceTime}.jpg`,
                             url: dataUrl,
+                            thumb: thumbDataUrl,
                             createdAt: sequenceTime
                         };
 
@@ -1459,23 +1595,14 @@
                                 if (typeof writeBatch === 'function') {
                                     const batch = writeBatch(db);
                                     subBatch.forEach((item) => {
-                                        batch.set(getImageDocRef(item.id), {
-                                            name: item.name,
-                                            url: item.url,
-                                            createdAt: item.createdAt,
-                                            uploadedBy: currentUser ? currentUser.uid : 'owner'
-                                        });
+                                        batch.set(getFullDocRef(item.id), cloudFullPayload(item));
+                                            batch.set(getImageDocRef(item.id), cloudMetaPayload(item));
                                     });
                                     await batch.commit();
                                 } else {
                                     await Promise.all(
                                         subBatch.map((item) =>
-                                            setDoc(getImageDocRef(item.id), {
-                                                name: item.name,
-                                                url: item.url,
-                                                createdAt: item.createdAt,
-                                                uploadedBy: currentUser ? currentUser.uid : 'owner'
-                                            })
+                                            writeItemToCloud(item)
                                         )
                                     );
                                 }
@@ -1486,12 +1613,7 @@
                                 // Fallback: write each image individually in case one doc was slightly too large
                                 for (const item of subBatch) {
                                     try {
-                                        await setDoc(getImageDocRef(item.id), {
-                                            name: item.name,
-                                            url: item.url,
-                                            createdAt: item.createdAt,
-                                            uploadedBy: currentUser ? currentUser.uid : 'owner'
-                                        });
+                                        await writeItemToCloud(item);
                                         cloudSuccessCount++;
                                         lastCloudError = null;
                                     } catch (singleErr) {
@@ -1555,6 +1677,7 @@
                     const { deleteDoc } = firestoreModules;
                     const docRef = getImageDocRef(docId);
                     await deleteDoc(docRef);
+                    await deleteDoc(getFullDocRef(docId)).catch(() => {});
                 } catch (err) {
                     console.warn('Cloud delete skipped:', err);
                 }
@@ -1659,13 +1782,17 @@
                         const batch = writeBatch(db);
                         chunk.forEach((docId) => {
                             batch.delete(getImageDocRef(docId));
+                            batch.delete(getFullDocRef(docId));
                         });
                         cloudDeletePromise = batch.commit().catch((err) => {
                             console.warn('Batch cloud delete warning:', err);
                         });
                     } else {
                         cloudDeletePromise = Promise.all(
-                            chunk.map((docId) => deleteDoc(getImageDocRef(docId)).catch(() => {}))
+                            chunk.map((docId) => Promise.all([
+                                deleteDoc(getImageDocRef(docId)).catch(() => {}),
+                                deleteDoc(getFullDocRef(docId)).catch(() => {})
+                            ]))
                         );
                     }
                 }
@@ -1741,6 +1868,10 @@
                 showUploadProgressUI(0, unsyncedItems.length, 'Pushing local images to public cloud...', 'Syncing to Public Cloud...', false);
             }
 
+            for (const it of unsyncedItems) {
+                if (!it.url) await ensureFullUrl(it);
+                if (!it.thumb && it.url) it.thumb = await makeThumbFromDataUrl(it.url);
+            }
             const { writeBatch, setDoc } = firestoreModules;
             let synced = 0;
             const SYNC_BATCH_SIZE = 4;
@@ -1751,22 +1882,13 @@
                     if (typeof writeBatch === 'function') {
                         const batch = writeBatch(db);
                         subBatch.forEach((item) => {
-                            batch.set(getImageDocRef(item.id), {
-                                name: item.name || 'study-material.jpg',
-                                url: item.url,
-                                createdAt: item.createdAt || Date.now(),
-                                uploadedBy: currentUser ? currentUser.uid : 'owner'
-                            });
+                            batch.set(getFullDocRef(item.id), cloudFullPayload(item));
+                                            batch.set(getImageDocRef(item.id), cloudMetaPayload(item));
                         });
                         await batch.commit();
                     } else {
                         for (const item of subBatch) {
-                            await setDoc(getImageDocRef(item.id), {
-                                name: item.name || 'study-material.jpg',
-                                url: item.url,
-                                createdAt: item.createdAt || Date.now(),
-                                uploadedBy: currentUser ? currentUser.uid : 'owner'
-                            });
+                            await writeItemToCloud(item);
                         }
                     }
                     synced += subBatch.length;
@@ -1778,12 +1900,7 @@
                     console.error('Cloud sync batch error, trying one by one:', err);
                     for (const item of subBatch) {
                         try {
-                            await setDoc(getImageDocRef(item.id), {
-                                name: item.name || 'study-material.jpg',
-                                url: item.url,
-                                createdAt: item.createdAt || Date.now(),
-                                uploadedBy: currentUser ? currentUser.uid : 'owner'
-                            });
+                            await writeItemToCloud(item);
                             synced++;
                             lastCloudError = null;
                         } catch (singleErr) {
@@ -1822,8 +1939,10 @@
         // ==========================================
         // EXPORT WEBSITE WITH EMBEDDED CLOUD KEYS & IMAGES
         // ==========================================
-        function exportStaticWebsiteWithEmbeddedImages() {
+        async function exportStaticWebsiteWithEmbeddedImages() {
             if (!isOwner) return;
+            showToast('Preparing full-quality images for export...');
+            await Promise.all(galleryItems.map((it) => ensureFullUrl(it)));
 
             // Temporarily lock Owner UI before serializing HTML so public visitors see the locked state
             isOwner = false;
@@ -1877,7 +1996,7 @@
                     images: galleryItems.map((item) => ({
                         id: item.id,
                         name: item.name,
-                        url: item.url,
+                        url: item.url || item.thumb,
                         createdAt: item.createdAt
                     }))
                 };
@@ -2005,7 +2124,25 @@
 
             const currentItem = galleryItems[currentViewerIndex];
             resetZoom();
-            lightboxImg.src = currentItem.url;
+            const fullNow = currentItem.url || fullUrlCache.get(currentItem.id) || '';
+            lightboxImg.src = fullNow || currentItem.thumb || '';
+            lightboxImg.style.filter = fullNow ? '' : 'blur(2px)';
+            if (!fullNow) {
+                const wantedId = currentItem.id;
+                ensureFullUrl(currentItem).then((fullUrl) => {
+                    const stillOpen = currentViewerIndex >= 0 && galleryItems[currentViewerIndex] && galleryItems[currentViewerIndex].id === wantedId;
+                    if (stillOpen && fullUrl) {
+                        lightboxImg.src = fullUrl;
+                        lightboxImg.style.filter = '';
+                    }
+                });
+            }
+            // Warm up the next and previous images so swiping feels instant
+            if (galleryItems.length > 1) {
+                const n = galleryItems.length;
+                ensureFullUrl(galleryItems[(currentViewerIndex + 1) % n]);
+                ensureFullUrl(galleryItems[(currentViewerIndex - 1 + n) % n]);
+            }
             lightboxImg.alt = currentItem.name || 'Study Material';
             lightboxCounter.textContent = `${currentViewerIndex + 1} / ${galleryItems.length}`;
 
@@ -2055,12 +2192,14 @@
             updateLightboxContent();
         }
 
-        function downloadCurrentImage() {
+        async function downloadCurrentImage() {
             if (currentViewerIndex < 0 || currentViewerIndex >= galleryItems.length) return;
             const currentItem = galleryItems[currentViewerIndex];
+            const fullUrl = await ensureFullUrl(currentItem);
+            if (!fullUrl) { showToast('Image is still loading, try again in a moment.'); return; }
 
             const link = document.createElement('a');
-            link.href = currentItem.url;
+            link.href = fullUrl;
             link.download = currentItem.name || `study-material-${currentViewerIndex + 1}.jpg`;
             document.body.appendChild(link);
             link.click();
@@ -2427,11 +2566,13 @@
                         const items = [];
                         snapshot.forEach((docSnap) => {
                             const data = docSnap.data();
-                            if (data && data.url) {
+                            if (data && (data.url || data.thumb)) {
                                 items.push({
                                     id: docSnap.id,
                                     name: data.name || 'study-material.jpg',
-                                    url: data.url,
+                                    url: data.url || '',
+                                    thumb: data.thumb || '',
+                                    legacy: Boolean(data.url && !data.thumb),
                                     createdAt: data.createdAt || 0
                                 });
                             }
