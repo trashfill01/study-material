@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Study Material Gallery</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -467,6 +467,217 @@
         }
     </style>
 
+    <style id="owner-image-selection-styles">
+        .gallery-card.owner-image-selected { outline: 3px solid #2563eb; outline-offset: -3px; border-color: #2563eb !important; }
+        .gallery-card.owner-image-selected .delete-card-btn { background: #2563eb; color: #fff; border-color: #2563eb; }
+        .gallery-card .delete-card-btn { touch-action: manipulation; }
+        .gallery-card.owner-image-selected .delete-card-btn { box-shadow: 0 0 0 3px rgba(37,99,235,.16), 0 4px 12px rgba(37,99,235,.25); }
+    </style>
+
+    <style id="owner-pill-and-upload-spacing-fix">
+        /* Keep the locked Owner control as a small standalone pill. */
+        #gallery-screen > .fixed.bottom-6.left-6 {
+            left: 12px;
+            right: auto;
+            bottom: calc(12px + env(safe-area-inset-bottom));
+            width: max-content;
+            max-width: calc(100vw - 84px);
+            padding: 0;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+            -webkit-backdrop-filter: none;
+            backdrop-filter: none;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 7px;
+        }
+        #owner-lock-btn {
+            flex: 0 0 auto;
+            width: auto;
+            min-width: 0;
+            min-height: 40px;
+            max-width: max-content;
+            padding: 9px 14px;
+            border-radius: 9999px;
+            white-space: nowrap;
+            overflow-wrap: normal;
+            font-size: 12px;
+            line-height: 1;
+        }
+        #cloud-setup-btn,
+        #export-site-btn,
+        #delete-selected-btn {
+            flex: 0 1 auto;
+            width: auto;
+            min-width: 0;
+            min-height: 40px;
+            max-width: min(190px, calc(100vw - 100px));
+            padding: 9px 12px;
+            border-radius: 9999px;
+            white-space: nowrap;
+            font-size: 11px;
+            line-height: 1.15;
+        }
+        #export-site-btn { white-space: normal; }
+        #upload-fab {
+            right: 16px;
+            bottom: calc(132px + env(safe-area-inset-bottom));
+        }
+        @media (max-width: 380px) {
+            #gallery-screen > .fixed.bottom-6.left-6 {
+                left: 8px;
+                right: auto;
+                width: max-content;
+                max-width: calc(100vw - 76px);
+                padding: 0;
+                gap: 6px;
+                background: transparent;
+                border: 0;
+                box-shadow: none;
+            }
+            #owner-lock-btn {
+                flex: 0 0 auto;
+                min-height: 38px;
+                padding: 8px 12px;
+                font-size: 11px;
+            }
+            #cloud-setup-btn,
+            #export-site-btn,
+            #delete-selected-btn {
+                flex: 0 1 auto;
+                min-height: 38px;
+                max-width: calc(100vw - 92px);
+                padding: 8px 10px;
+                font-size: 10px;
+            }
+            #upload-fab {
+                right: 12px;
+                bottom: calc(124px + env(safe-area-inset-bottom));
+                width: 48px;
+                height: 48px;
+            }
+        }
+        @media (min-width: 700px) {
+            #gallery-screen > .fixed.bottom-6.left-6 {
+                left: 20px;
+                right: auto;
+                bottom: 18px;
+                width: max-content;
+                max-width: calc(100vw - 100px);
+                transform: none;
+            }
+            #upload-fab {
+                right: 24px;
+                bottom: 132px;
+            }
+        }
+    </style>
+
+    <style id="welcome-screen-responsive-polish">
+        /* A resilient welcome screen for mobile browsers, notches and short viewports. */
+        #welcome-screen {
+            box-sizing: border-box;
+            padding-top: max(14px, env(safe-area-inset-top));
+            padding-right: max(14px, env(safe-area-inset-right));
+            padding-bottom: max(14px, env(safe-area-inset-bottom));
+            padding-left: max(14px, env(safe-area-inset-left));
+            overflow-x: hidden;
+            overflow-y: auto;
+            overscroll-behavior-y: contain;
+            -webkit-overflow-scrolling: touch;
+            justify-content: safe center;
+            align-items: safe center;
+        }
+        #welcome-screen > .welcome-card {
+            box-sizing: border-box;
+            width: min(100%, 460px);
+            max-height: calc(100vh - 28px);
+            max-height: calc(100dvh - max(14px, env(safe-area-inset-top)) - max(14px, env(safe-area-inset-bottom)));
+            overflow-x: hidden;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            padding: clamp(24px, 5vw, 42px) clamp(20px, 5.5vw, 42px);
+            border-radius: clamp(22px, 4.5vw, 32px);
+            -webkit-overflow-scrolling: touch;
+        }
+        #welcome-screen .welcome-icon {
+            width: clamp(56px, 17vw, 76px);
+            height: clamp(56px, 17vw, 76px);
+            margin-bottom: clamp(17px, 4.5vw, 25px);
+            border-radius: 20px;
+        }
+        #welcome-screen .welcome-icon svg {
+            width: clamp(27px, 8vw, 34px);
+            height: clamp(27px, 8vw, 34px);
+        }
+        #welcome-screen .welcome-title {
+            max-width: 100%;
+            margin: 0 auto 11px;
+            font-size: clamp(1.22rem, 5.9vw, 1.9rem);
+            line-height: 1.18;
+            letter-spacing: -0.04em;
+            text-wrap: balance;
+            overflow-wrap: normal;
+        }
+        #welcome-screen .welcome-subtitle {
+            max-width: 36ch;
+            margin: 0 auto clamp(22px, 5.5vh, 34px);
+            font-size: clamp(.9rem, 3.65vw, 1.05rem);
+            line-height: 1.58;
+            text-wrap: pretty;
+        }
+        #welcome-screen .welcome-action {
+            min-height: 56px;
+            padding: 15px clamp(12px, 4vw, 24px);
+            border-radius: 18px;
+            gap: 9px;
+            font-size: clamp(.88rem, 3.55vw, 1.05rem);
+            line-height: 1.25;
+            letter-spacing: .005em;
+            white-space: normal;
+            touch-action: manipulation;
+        }
+        #welcome-screen .welcome-action span {
+            min-width: 0;
+            max-width: 100%;
+            text-wrap: balance;
+        }
+        #welcome-screen .welcome-action svg {
+            flex: 0 0 20px;
+            width: 20px;
+            height: 20px;
+        }
+        @media (max-width: 360px) {
+            #welcome-screen > .welcome-card { padding: 22px 17px 20px; }
+            #welcome-screen .welcome-title { font-size: clamp(1.18rem, 6vw, 1.35rem); }
+            #welcome-screen .welcome-subtitle { font-size: .9rem; margin-bottom: 21px; }
+            #welcome-screen .welcome-action { min-height: 54px; padding-inline: 11px; gap: 7px; font-size: .88rem; }
+        }
+        @media (max-height: 620px) {
+            #welcome-screen > .welcome-card { padding-top: 18px; padding-bottom: 18px; }
+            #welcome-screen .welcome-icon { width: 52px; height: 52px; margin-bottom: 13px; border-radius: 16px; }
+            #welcome-screen .welcome-icon svg { width: 26px; height: 26px; }
+            #welcome-screen .welcome-title { margin-bottom: 8px; }
+            #welcome-screen .welcome-subtitle { margin-bottom: 17px; line-height: 1.45; }
+            #welcome-screen .welcome-action { min-height: 50px; padding-top: 12px; padding-bottom: 12px; }
+        }
+        @media (orientation: landscape) and (max-height: 500px) {
+            #welcome-screen > .welcome-card { width: min(100%, 620px); padding: 16px 28px; }
+            #welcome-screen .welcome-icon { width: 44px; height: 44px; margin-bottom: 10px; }
+            #welcome-screen .welcome-icon svg { width: 23px; height: 23px; }
+            #welcome-screen .welcome-title { font-size: 1.35rem; margin-bottom: 6px; }
+            #welcome-screen .welcome-subtitle { margin-bottom: 12px; font-size: .9rem; }
+            #welcome-screen .welcome-action { min-height: 46px; padding: 10px 16px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #welcome-screen > .welcome-card { scroll-behavior: auto; }
+        }
+    </style>
+
 </head>
 <body class="text-slate-800 antialiased relative selection:bg-blue-500 selection:text-white">
 
@@ -479,26 +690,26 @@
         <div class="absolute -bottom-32 -right-32 w-96 h-96 bg-sky-300/30 rounded-full blur-3xl pointer-events-none"></div>
 
         <!-- Centered Welcome Card -->
-        <div class="animate-popup relative w-full max-w-md bg-white/90 backdrop-blur-xl border border-white/80 rounded-3xl shadow-[0_24px_60px_-15px_rgba(37,99,235,0.18)] p-8 sm:p-10 text-center">
+        <div class="welcome-card animate-popup relative w-full max-w-md bg-white/90 backdrop-blur-xl border border-white/80 rounded-3xl shadow-[0_24px_60px_-15px_rgba(37,99,235,0.18)] p-8 sm:p-10 text-center">
             <!-- Icon Badge -->
-            <div class="mx-auto mb-6 w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30 text-white">
+            <div class="welcome-icon mx-auto mb-6 w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30 text-white">
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"></path>
                 </svg>
             </div>
 
             <!-- Main Heading -->
-            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 mb-3">
+            <h1 class="welcome-title text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 mb-3">
                 OPEN STUDY MATERIAL
             </h1>
 
             <!-- Subtitle -->
-            <p class="text-slate-500 text-sm sm:text-base leading-relaxed mb-8">
+            <p class="welcome-subtitle text-slate-500 text-sm sm:text-base leading-relaxed mb-8">
                 Your personal collection of study notes and learning materials.
             </p>
 
             <!-- Action Button -->
-            <button id="open-gallery-btn" type="button" class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 active:scale-[0.99] text-white font-semibold text-base tracking-wide shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 transition-all duration-200 flex items-center justify-center gap-2">
+            <button id="open-gallery-btn" type="button" class="welcome-action w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 active:scale-[0.99] text-white font-semibold text-base tracking-wide shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 transition-all duration-200 flex items-center justify-center gap-2">
                 <span>OPEN STUDY MATERIAL</span>
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path>
@@ -878,6 +1089,8 @@
 
         let db = null;
         let auth = null;
+        let storage = null;
+        let storageModules = null;
         let currentUser = null;
         let isCloudActive = false;
         let cloudFirstLoadDone = false;
@@ -903,9 +1116,43 @@
         let cloudItemIds = new Set();
         let localItems = [];
         let deletedEmbeddedIds = new Set();
+        // Prevent cloud snapshots from briefly re-inserting images during optimistic bulk deletion.
+        let pendingDeleteIds = new Set();
         let galleryItems = [];
         let selectedIds = new Set();
         let currentViewerIndex = -1;
+
+        // Preload and decode thumbnails before the gallery is revealed. The first
+        // screenful is prioritized; remaining images warm in small idle-time batches.
+        const warmedGalleryImages = new Set();
+        let galleryWarmupRunning = false;
+        function warmGalleryImageCache(items = galleryItems) {
+            if (!Array.isArray(items) || !items.length) return;
+            const urls = [...new Set(items.map(item => item && (item.thumb || item.url)).filter(Boolean))];
+            const warm = (url, highPriority = false) => {
+                if (!url || warmedGalleryImages.has(url)) return;
+                warmedGalleryImages.add(url);
+                const preload = new Image();
+                if ('fetchPriority' in preload) preload.fetchPriority = highPriority ? 'high' : 'low';
+                preload.decoding = 'async';
+                preload.src = url;
+                if (preload.decode) preload.decode().catch(() => {});
+            };
+            urls.slice(0, 30).forEach((url, index) => warm(url, index < 18));
+            const backgroundUrls = urls.slice(30);
+            if (backgroundUrls.length && !galleryWarmupRunning) {
+                galleryWarmupRunning = true;
+                let index = 0;
+                const schedule = window.requestIdleCallback || ((callback) => setTimeout(callback, 80));
+                const runBatch = () => {
+                    const end = Math.min(index + 6, backgroundUrls.length);
+                    for (; index < end; index++) warm(backgroundUrls[index], false);
+                    if (index < backgroundUrls.length) schedule(runBatch);
+                    else galleryWarmupRunning = false;
+                };
+                schedule(runBatch);
+            }
+        }
 
         // Owner Mode State (False by default so public visitors can ONLY view)
         let isOwner = false;
@@ -1243,21 +1490,21 @@
                 ? window.__EMBEDDED_GALLERY_DATA__.images
                 : [];
             embeddedList.forEach((item) => {
-                if (item && item.id && (item.url || item.thumb) && !deletedEmbeddedIds.has(item.id)) {
+                if (item && item.id && (item.url || item.thumb) && !deletedEmbeddedIds.has(item.id) && !pendingDeleteIds.has(item.id)) {
                     map.set(item.id, item);
                 }
             });
 
             // 2. Local IndexedDB images
             localItems.forEach((item) => {
-                if (item && item.id && (item.url || item.thumb)) {
+                if (item && item.id && (item.url || item.thumb) && !pendingDeleteIds.has(item.id)) {
                     map.set(item.id, item);
                 }
             });
 
             // 3. Live Cloud images (if cloud is active)
             cloudItems.forEach((item) => {
-                if (item && item.id && (item.url || item.thumb)) {
+                if (item && item.id && (item.url || item.thumb) && !pendingDeleteIds.has(item.id) && !deletedEmbeddedIds.has(item.id)) {
                     const prev = map.get(item.id);
                     if (!item.url && prev && prev.url) item.url = prev.url;
                     if (!item.thumb && prev && prev.thumb) item.thumb = prev.thumb;
@@ -1458,12 +1705,33 @@
         }
 
         function updateSelectionUI() {
+            const selectedCount = selectedIds.size;
             if (!isOwner || galleryItems.length === 0) {
                 deleteSelectedBtn.classList.add('hidden');
-                return;
+            } else {
+                deleteSelectedBtn.classList.remove('hidden');
+                const label = document.getElementById('delete-selected-label');
+                if (selectedCount > 0) {
+                    deleteSelectedBtn.title = `Delete ${selectedCount} selected image${selectedCount === 1 ? '' : 's'}`;
+                    label.textContent = `Delete Selected (${selectedCount})`;
+                } else {
+                    deleteSelectedBtn.title = 'Delete all images';
+                    label.textContent = 'Delete All Images';
+                }
             }
-            deleteSelectedBtn.classList.remove('hidden');
-            deleteSelectedBtn.title = 'Delete all images';
+            galleryGrid.querySelectorAll('.gallery-card').forEach((card) => {
+                const isSelected = selectedIds.has(card.dataset.id);
+                card.classList.toggle('owner-image-selected', isSelected);
+                const selectBtn = card.querySelector('.delete-card-btn');
+                if (selectBtn) {
+                    selectBtn.title = isSelected ? 'Deselect image' : 'Select image';
+                    selectBtn.setAttribute('aria-label', selectBtn.title);
+                    selectBtn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+                    selectBtn.innerHTML = isSelected
+                        ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6"/></svg>'
+                        : '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h8" opacity="0"/></svg>';
+                }
+            });
         }
 
         // ==========================================
@@ -1533,7 +1801,65 @@
         }
 
         function cloudFullPayload(item) {
-            return { url: item.url, createdAt: item.createdAt || Date.now() };
+            const payload = { url: item.url, createdAt: item.createdAt || Date.now() };
+            if (item.storagePath) payload.storagePath = item.storagePath;
+            return payload;
+        }
+
+        // Bounded worker pool: keeps uploads/deletes parallel without exhausting
+        // memory, the browser connection pool, or a phone's decoder resources.
+        async function mapWithConcurrency(items, concurrency, worker) {
+            const results = new Array(items.length);
+            if (!items.length) return results;
+            let cursor = 0;
+            const workerCount = Math.max(1, Math.min(items.length, concurrency || 1));
+            await Promise.all(Array.from({ length: workerCount }, async () => {
+                while (true) {
+                    const index = cursor++;
+                    if (index >= items.length) return;
+                    try { results[index] = await worker(items[index], index); }
+                    catch (error) { results[index] = { error }; }
+                }
+            }));
+            return results;
+        }
+
+        const FIREBASE_STORAGE_FOLDER = 'study-materials';
+        function getImageStoragePath(imageId) {
+            return `${FIREBASE_STORAGE_FOLDER}/${imageId}`;
+        }
+
+        function dataUrlToBlob(dataUrl) {
+            if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) {
+                throw new Error('Image data is not a local data URL.');
+            }
+            const comma = dataUrl.indexOf(',');
+            if (comma < 0) throw new Error('Invalid image data URL.');
+            const header = dataUrl.slice(0, comma);
+            const mime = (header.match(/^data:([^;]+)/i) || [])[1] || 'application/octet-stream';
+            const payload = dataUrl.slice(comma + 1);
+            if (/;base64/i.test(header)) {
+                const binary = atob(payload);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                return new Blob([bytes], { type: mime });
+            }
+            return new Blob([decodeURIComponent(payload)], { type: mime });
+        }
+
+        async function deleteStorageImageObject(imageId) {
+            if (!storage || !storageModules || typeof storageModules.deleteObject !== 'function') return { ok: true, skipped: true };
+            try {
+                const objectRef = storageModules.ref(storage, getImageStoragePath(imageId));
+                await storageModules.deleteObject(objectRef);
+                return { ok: true };
+            } catch (error) {
+                const code = error && error.code ? error.code : '';
+                // Legacy Firestore-only images have no object in Firebase Storage.
+                if (code === 'storage/object-not-found' || code === 'object-not-found') return { ok: true, skipped: true };
+                console.warn('Storage image cleanup warning:', imageId, error);
+                return { ok: false, error };
+            }
         }
 
         // Writes full image first, then the small list document
@@ -1709,7 +2035,7 @@
 
             const img = document.createElement('img');
             img.alt = item.name || 'Study Material';
-            img.loading = galleryGrid.children.length < 18 ? 'eager' : 'lazy';
+            img.loading = galleryGrid.children.length < 30 ? 'eager' : 'lazy';
             img.decoding = 'async';
             if (galleryGrid.children.length < 18) img.fetchPriority = 'high';
             img.className = 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out';
@@ -1719,22 +2045,23 @@
             const hoverOverlay = document.createElement('div');
             hoverOverlay.className = 'absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-slate-900/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none';
 
-            // Delete Individual Image Button (ONLY visible when isOwner is true)
+            // Owner selection control (tap to select/deselect this image)
             const deleteBtn = document.createElement('button');
             deleteBtn.type = 'button';
-            deleteBtn.title = 'Delete image (Owner)';
-            deleteBtn.setAttribute('aria-label', 'Delete image');
-            deleteBtn.className = `delete-card-btn ${isOwner ? '' : 'hidden'} absolute top-2.5 right-2.5 z-10 w-9 h-9 rounded-full bg-white/90 hover:bg-red-500 text-slate-700 hover:text-white shadow-md backdrop-blur-md flex items-center justify-center transition-all duration-200 active:scale-90`;
-            deleteBtn.innerHTML = `
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                </svg>
-            `;
+            deleteBtn.title = selectedIds.has(item.id) ? 'Deselect image' : 'Select image';
+            deleteBtn.setAttribute('aria-label', deleteBtn.title);
+            deleteBtn.setAttribute('aria-pressed', selectedIds.has(item.id) ? 'true' : 'false');
+            deleteBtn.className = `delete-card-btn ${isOwner ? '' : 'hidden'} absolute top-2.5 right-2.5 z-10 w-9 h-9 rounded-full bg-white/95 text-slate-700 border border-slate-200 shadow-md backdrop-blur-md flex items-center justify-center transition-all duration-200 active:scale-90`;
+            deleteBtn.innerHTML = selectedIds.has(item.id)
+                ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6"/></svg>'
+                : '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/></svg>';
 
-            deleteBtn.addEventListener('click', async (e) => {
+            deleteBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (!isOwner) return;
-                await handleDeleteImage(item.id);
+                if (selectedIds.has(item.id)) selectedIds.delete(item.id);
+                else selectedIds.add(item.id);
+                updateSelectionUI();
             });
 
             // Handle Card Click -> Open Lightbox
@@ -1768,6 +2095,7 @@
         // UPLOAD & DELETE HANDLERS (UNLIMITED QUEUE)
         // ==========================================
         let uploadQueue = [];
+        let uploadQueueHead = 0;
         let isProcessingQueue = false;
         let totalQueuedInSession = 0;
         let processedInSession = 0;
@@ -1793,6 +2121,8 @@
             totalQueuedInSession += validFiles.length;
 
             if (!isProcessingQueue) {
+                lastCloudError = null;
+                uploadQueueHead = 0;
                 isUploadCancelled = false;
                 cancelOperationBtn.textContent = 'Cancel';
                 cancelOperationBtn.disabled = false;
@@ -1818,7 +2148,7 @@
         // - worker pool: many images compress at the same time
         // - cloud upload runs in the background while the next images compress
         // ==========================================
-        const CLOUD_BATCH_SIZE = 6; // images per Firestore write (~2.5 MB, safely under the 10 MB limit)
+        const CLOUD_BATCH_SIZE = 8; // 8 images = 16 Firestore writes, safely below the 500-write batch limit and typical 10 MiB request ceiling
 
         async function decodeForUpload(file) {
             if (typeof createImageBitmap === 'function') {
@@ -1857,7 +2187,7 @@
             if (file.size <= 140 * 1024 && (file.type === 'image/webp' || file.type === 'image/jpeg')) {
                 const url = await blobToDataURLAsync(file);
                 const thumb = await makeThumbFromDataUrl(url);
-                return { url, thumb };
+                return { url, thumb, blob: file };
             }
 
             const dec = await decodeForUpload(file);
@@ -1902,20 +2232,61 @@
                 }
                 canvas.width = 1; canvas.height = 1;
                 const url = await blobToDataURLAsync(blob);
-                return { url, thumb };
+                return { url, thumb, blob };
             } finally {
                 dec.close();
             }
         }
 
-        // Sends images to Firebase in groups, several groups at the same time. Never throws.
+        // Fast cloud upload pipeline:
+        // 1) Store binary image files in Firebase Storage (purpose-built for media).
+        // 2) Store only the compact thumbnail + download URL metadata in Firestore.
+        // 3) Fall back to the previous Firestore-inline format if Storage is not
+        //    enabled/configured, so existing projects continue to work unchanged.
         async function uploadItemsToCloudParallel(items) {
-            if (!isCloudActive || !db || !firestoreModules) return 0;
-            const { writeBatch } = firestoreModules;
+            if (!isCloudActive || !db || !firestoreModules || !items.length) return 0;
+            const { writeBatch, setDoc } = firestoreModules;
+            const lowMemoryDevice = (navigator.deviceMemory || 4) <= 2;
+            const storageUploadConcurrency = lowMemoryDevice ? 2 : 5;
+            const canUseStorage = Boolean(storage && storageModules &&
+                typeof storageModules.uploadBytes === 'function' &&
+                typeof storageModules.getDownloadURL === 'function');
+            const storageFallbacks = { count: 0 };
+
+            const preparedItems = await mapWithConcurrency(items, canUseStorage ? storageUploadConcurrency : 6, async (item) => {
+                if (!canUseStorage || !item.url || !item.url.startsWith('data:')) return { ...item };
+                const objectPath = getImageStoragePath(item.id);
+                const objectRef = storageModules.ref(storage, objectPath);
+                try {
+                    const imageBlob = (typeof Blob !== 'undefined' && item.blob instanceof Blob)
+                        ? item.blob
+                        : dataUrlToBlob(item.url);
+                    const uploaded = await storageModules.uploadBytes(objectRef, imageBlob, {
+                        contentType: imageBlob.type || 'image/webp',
+                        cacheControl: 'public, max-age=31536000, immutable',
+                        customMetadata: { imageId: item.id }
+                    });
+                    const downloadUrl = await storageModules.getDownloadURL(uploaded.ref || objectRef);
+                    return { ...item, url: downloadUrl, storagePath: objectPath };
+                } catch (storageError) {
+                    // Some Firebase projects have Storage disabled or stricter rules.
+                    // Keep the old Firestore data-URL route as a reliable fallback.
+                    storageFallbacks.count++;
+                    console.warn('Firebase Storage upload unavailable; using Firestore fallback:', storageError);
+                    try { await storageModules.deleteObject(objectRef); } catch (cleanupError) { /* no object to clean up */ }
+                    return { ...item, storagePath: undefined };
+                }
+            });
+
             const groups = [];
-            for (let i = 0; i < items.length; i += CLOUD_BATCH_SIZE) groups.push(items.slice(i, i + CLOUD_BATCH_SIZE));
-            let ok = 0;
-            await Promise.all(groups.map(async (subBatch) => {
+            for (let i = 0; i < preparedItems.length; i += CLOUD_BATCH_SIZE) {
+                groups.push(preparedItems.slice(i, i + CLOUD_BATCH_SIZE));
+            }
+
+            let successCount = 0;
+            const failedItems = [];
+            let firstCloudError = null;
+            await mapWithConcurrency(groups, 2, async (subBatch) => {
                 try {
                     if (typeof writeBatch === 'function') {
                         const batch = writeBatch(db);
@@ -1924,32 +2295,59 @@
                             batch.set(getImageDocRef(item.id), cloudMetaPayload(item));
                         });
                         await batch.commit();
-                    } else {
-                        await Promise.all(subBatch.map((item) => writeItemToCloud(item)));
+                        successCount += subBatch.length;
+                        return;
                     }
-                    ok += subBatch.length;
-                    lastCloudError = null;
-                } catch (err) {
-                    console.error('Cloud group write failed, retrying one by one:', err);
-                    for (const item of subBatch) {
+                    throw new Error('Firestore batch writes are unavailable.');
+                } catch (batchError) {
+                    console.warn('Cloud batch write failed; retrying images individually:', batchError);
+                    const outcomes = await mapWithConcurrency(subBatch, 4, async (item) => {
                         try {
-                            await writeItemToCloud(item);
-                            ok++;
-                            lastCloudError = null;
-                        } catch (singleErr) {
-                            console.error('Single image write failed:', singleErr);
-                            lastCloudError = singleErr.code || singleErr.message || 'permission-denied';
+                            await Promise.all([
+                                setDoc(getFullDocRef(item.id), cloudFullPayload(item)),
+                                setDoc(getImageDocRef(item.id), cloudMetaPayload(item))
+                            ]);
+                            successCount++;
+                            return true;
+                        } catch (singleError) {
+                            if (!firstCloudError) firstCloudError = singleError || batchError;
+                            failedItems.push(item);
+                            console.error('Single image cloud write failed:', singleError);
+                            return false;
                         }
-                    }
+                    });
                 }
-            }));
-            return ok;
+            });
+
+            // Remove Storage objects for images whose Firestore records could not
+            // be committed, preventing orphaned cloud files and unnecessary usage.
+            if (failedItems.length) {
+                // Remove any partial Firestore documents for failed uploads, then
+                // clean up their binary object so retries start from a clean state.
+                await mapWithConcurrency(failedItems, 6, async (item) => {
+                    try {
+                        await Promise.all([
+                            firestoreModules.deleteDoc(getImageDocRef(item.id)).catch(() => {}),
+                            firestoreModules.deleteDoc(getFullDocRef(item.id)).catch(() => {})
+                        ]);
+                    } catch (cleanupError) { /* best-effort metadata cleanup */ }
+                    if (item.storagePath) await deleteStorageImageObject(item.id);
+                });
+            }
+
+            if (firstCloudError) {
+                lastCloudError = firstCloudError.code || firstCloudError.message || 'cloud-write-failed';
+            }
+            return successCount;
         }
 
         async function processUnlimitedUploadQueue() {
             isProcessingQueue = true;
-            const WORKERS = Math.max(4, Math.min(8, navigator.hardwareConcurrency || 6)); // faster parallel image processing
-            const MAX_CLOUD_JOBS_IN_FLIGHT = 3; // uploads running in the background at once
+            const cores = navigator.hardwareConcurrency || 4;
+            const deviceMemory = navigator.deviceMemory || 4;
+            // Balanced for phones: fewer simultaneous full-size canvases on low-memory devices.
+            const WORKERS = Math.max(2, Math.min(6, Math.floor(cores / 2), deviceMemory <= 2 ? 2 : deviceMemory <= 4 ? 3 : 5));
+            const MAX_CLOUD_JOBS_IN_FLIGHT = 2; // bounded cloud batches avoid network/memory spikes
             let cloudSuccessCount = 0;
             const pendingCloudJobs = new Set();
             let readyBuffer = [];
@@ -1965,14 +2363,19 @@
                 // Start the cloud upload in the background (does NOT make the next images wait)
                 const job = uploadItemsToCloudParallel(items)
                     .then((n) => { cloudSuccessCount += n; })
-                    .catch(() => {})
-                    .then(() => { pendingCloudJobs.delete(job); });
+                    .catch((error) => { console.warn('Cloud upload job failed:', error); })
+                    .finally(() => {
+                        // Drop temporary binary Blobs once cloud upload has finished.
+                        items.forEach((item) => { try { delete item.blob; } catch (e) {} });
+                        pendingCloudJobs.delete(job);
+                    });
                 pendingCloudJobs.add(job);
 
-                // Save on this device and show in the gallery right away
-                await idbBulkSaveImages(items);
-                localItems.push(...items);
-                appendItemsToGalleryDOM(items);
+                // Save compact local records and paint the gallery immediately.
+                const localBatch = items.map(({ blob, ...item }) => item);
+                await idbBulkSaveImages(localBatch);
+                localItems.push(...localBatch);
+                appendItemsToGalleryDOM(localBatch);
                 updateCloudStatusBadge();
             };
 
@@ -1983,7 +2386,7 @@
                         await Promise.race(Array.from(pendingCloudJobs));
                     }
                     if (isUploadCancelled) return;
-                    const file = uploadQueue.shift();
+                    const file = uploadQueueHead < uploadQueue.length ? uploadQueue[uploadQueueHead++] : null;
                     if (!file) return;
 
                     // Order number is given when the file is picked, so the gallery keeps your selection order
@@ -1997,6 +2400,7 @@
                                 name: file.name || `study-note-${sequenceTime}.jpg`,
                                 url: processed.url,
                                 thumb: processed.thumb,
+                                blob: processed.blob,
                                 createdAt: sequenceTime
                             };
                         }
@@ -2021,24 +2425,33 @@
                 }
             };
 
-            while (uploadQueue.length > 0 && !isUploadCancelled) {
-                await Promise.all(Array.from({ length: WORKERS }, () => worker()));
+            // Keep draining while files remain, including files added while earlier
+            // cloud batches are still completing. The queue head makes this O(n).
+            while (!isUploadCancelled) {
+                while (uploadQueueHead < uploadQueue.length && !isUploadCancelled) {
+                    await Promise.all(Array.from({ length: WORKERS }, () => worker()));
+                    await flushReady(true);
+                    // Brief yield so the Cancel button click registers immediately.
+                    await new Promise((r) => setTimeout(r, 8));
+                }
                 await flushReady(true);
-                // Brief yield so the Cancel button click registers immediately
-                await new Promise((r) => setTimeout(r, 10));
+                if (pendingCloudJobs.size > 0) {
+                    showUploadProgressUI(processedInSession, totalQueuedInSession, 'Finishing cloud batches...', 'Uploading Study Material...', true);
+                    await Promise.all(Array.from(pendingCloudJobs));
+                }
+                // A file picker can append files while the network is finishing.
+                if (uploadQueueHead >= uploadQueue.length || isUploadCancelled) break;
             }
             if (isUploadCancelled) uploadQueue.length = 0;
+            uploadQueueHead = 0;
             await flushReady(true);
-
-            if (pendingCloudJobs.size > 0 && !isUploadCancelled) {
-                showUploadProgressUI(processedInSession, totalQueuedInSession, 'Finishing upload to cloud...', 'Uploading Study Material...', true);
-            }
             await Promise.all(Array.from(pendingCloudJobs));
 
             const uploadedCount = processedInSession;
             const wasCancelled = isUploadCancelled;
 
             uploadQueue.length = 0;
+            uploadQueueHead = 0;
             isProcessingQueue = false;
             isUploadCancelled = false;
             totalQueuedInSession = 0;
@@ -2050,12 +2463,15 @@
             if (wasCancelled) {
                 completeUploadProgressUI(uploadedCount, `Upload Cancelled (${uploadedCount} Saved)`);
                 showToast(`Upload stopped. ${uploadedCount} image${uploadedCount === 1 ? '' : 's'} saved.`);
+            } else if (!isCloudActive || !db || !firestoreModules) {
+                completeUploadProgressUI(uploadedCount, `Saved ${uploadedCount} Image${uploadedCount === 1 ? '' : 's'} on This Device`);
+                showToast(`Saved ${uploadedCount} image${uploadedCount === 1 ? '' : 's'} on this device. Connect the cloud to publish them for visitors.`);
             } else if (lastCloudError) {
                 completeUploadProgressUI(uploadedCount, `NOT PUBLIC: Saved on this device only`);
-                showToast(`Visitors cannot see these yet. Click the red Cloud button (bottom-left) and fix the Firestore rules.`);
+                showToast(`Some images could not be published. Check the Cloud status and Firebase rules.`);
             } else {
-                completeUploadProgressUI(uploadedCount, `Published ${cloudSuccessCount || uploadedCount} Image${uploadedCount === 1 ? '' : 's'} to Public!`);
-                showToast(`Published ${cloudSuccessCount || uploadedCount} image(s) to live public cloud!`);
+                completeUploadProgressUI(uploadedCount, `Published ${cloudSuccessCount} Image${cloudSuccessCount === 1 ? '' : 's'} to Public!`);
+                showToast(`Published ${cloudSuccessCount} image${cloudSuccessCount === 1 ? '' : 's'} to live public cloud!`);
             }
         }
 
@@ -2077,6 +2493,7 @@
                     const docRef = getImageDocRef(docId);
                     await deleteDoc(docRef);
                     await deleteDoc(getFullDocRef(docId)).catch(() => {});
+                    await deleteStorageImageObject(docId);
                 } catch (err) {
                     console.warn('Cloud delete skipped:', err);
                 }
@@ -2094,9 +2511,16 @@
 
         deleteSelectedBtn.addEventListener('click', () => {
             if (!isOwner || galleryItems.length === 0) return;
-            pendingBulkDeleteIds = galleryItems.map((item) => item.id);
-            deleteConfirmTitle.textContent = `Delete All ${pendingBulkDeleteIds.length} Images?`;
-            deleteConfirmDesc.textContent = `Are you sure you want to permanently delete all ${pendingBulkDeleteIds.length} study material images from your gallery and cloud database?`;
+            pendingBulkDeleteIds = selectedIds.size > 0
+                ? galleryItems.filter((item) => selectedIds.has(item.id)).map((item) => item.id)
+                : galleryItems.map((item) => item.id);
+            const deletingSelected = selectedIds.size > 0;
+            deleteConfirmTitle.textContent = deletingSelected
+                ? `Delete ${pendingBulkDeleteIds.length} Selected Image${pendingBulkDeleteIds.length === 1 ? '' : 's'}?`
+                : `Delete All ${pendingBulkDeleteIds.length} Images?`;
+            deleteConfirmDesc.textContent = deletingSelected
+                ? `Are you sure you want to permanently delete the ${pendingBulkDeleteIds.length} selected study material image${pendingBulkDeleteIds.length === 1 ? '' : 's'} from your gallery and cloud database?`
+                : `Are you sure you want to permanently delete all ${pendingBulkDeleteIds.length} study material images from your gallery and cloud database?`;
             deleteConfirmModal.classList.remove('hidden');
         });
 
@@ -2114,103 +2538,169 @@
             isDeleteCancelled = true;
             isUploadCancelled = true;
             uploadQueue.length = 0;
+            uploadQueueHead = 0;
             cancelOperationBtn.textContent = 'Stopping...';
             cancelOperationBtn.disabled = true;
         });
+
+        async function deleteCloudImagesChunk(ids) {
+            const failedFirestoreIds = new Set();
+            if (isCloudActive && db && firestoreModules) {
+                const { writeBatch, deleteDoc } = firestoreModules;
+                try {
+                    if (typeof writeBatch === 'function') {
+                        const batch = writeBatch(db);
+                        ids.forEach((docId) => {
+                            batch.delete(getImageDocRef(docId));
+                            batch.delete(getFullDocRef(docId));
+                        });
+                        await batch.commit();
+                    } else {
+                        throw new Error('Firestore batch deletes are unavailable.');
+                    }
+                } catch (batchError) {
+                    console.warn('Cloud delete batch failed; retrying individual records:', batchError);
+                    const outcomes = await mapWithConcurrency(ids, 12, async (docId) => {
+                        try {
+                            await Promise.all([
+                                deleteDoc(getImageDocRef(docId)),
+                                deleteDoc(getFullDocRef(docId))
+                            ]);
+                            return true;
+                        } catch (error) {
+                            console.warn('Cloud delete failed for image:', docId, error);
+                            return false;
+                        }
+                    });
+                    outcomes.forEach((result, index) => {
+                        if (result !== true) failedFirestoreIds.add(ids[index]);
+                    });
+                }
+            }
+
+            // Delete binary files only when their Firestore records were removed;
+            // otherwise the still-visible image must keep its full-resolution file.
+            const firestoreDeletedIds = ids.filter((docId) => !failedFirestoreIds.has(docId));
+            const storageResults = await mapWithConcurrency(firestoreDeletedIds, 10, async (docId) => deleteStorageImageObject(docId));
+            const storageFailures = storageResults.filter((result) => result && result.ok === false).length;
+            return { failedFirestoreIds, storageFailures };
+        }
 
         deleteConfirmYes.addEventListener('click', async () => {
             if (!isOwner || pendingBulkDeleteIds.length === 0) {
                 closeDeleteConfirmModal();
                 return;
             }
+            if (isProcessingQueue) {
+                closeDeleteConfirmModal();
+                showToast('Please let the current upload or delete finish first.');
+                return;
+            }
 
-            const idsToDelete = [...pendingBulkDeleteIds];
+            const idsToDelete = [...new Set(pendingBulkDeleteIds)];
             const totalToDelete = idsToDelete.length;
+            const itemBackup = new Map(galleryItems.map((item) => [item.id, item]));
             closeDeleteConfirmModal();
 
-            // Reset cancel state and pause cloud snapshot rebuilds while bulk deleting
             isDeleteCancelled = false;
+            isUploadCancelled = false;
             cancelOperationBtn.textContent = 'Cancel';
             cancelOperationBtn.disabled = false;
             isProcessingQueue = true;
 
+            let attemptedCount = 0;
             let deletedCount = 0;
-            const actuallyDeletedIds = new Set();
-
-            showUploadProgressUI(0, totalToDelete, 'Fast batch removal...', 'Deleting Study Material...', true);
-
-            // Process in fast chunks of 50 so UI updates smoothly and user can click "Cancel" anytime
-            const CHUNK_SIZE = 400; // Stay below Firestore's 500-operation batch limit while reducing requests.
-
+            let cloudFailureCount = 0;
+            let storageFailureCount = 0;
+            const CHUNK_SIZE = 240; // 240 images x 2 Firestore docs = 480 writes, below the 500 limit.
+            const chunks = [];
             for (let i = 0; i < idsToDelete.length; i += CHUNK_SIZE) {
-                if (isDeleteCancelled) break;
-
-                const chunk = idsToDelete.slice(i, i + CHUNK_SIZE);
-
-                // 1. Single-transaction IndexedDB bulk delete (takes ~2ms for 50 items)
-                const localDeletePromise = idbBulkDeleteImages(chunk);
-
-                // 2. Single-request Firestore writeBatch delete (1 network call instead of 50 separate calls)
-                let cloudDeletePromise = Promise.resolve();
-                if (isCloudActive && db && firestoreModules) {
-                    const { writeBatch, deleteDoc } = firestoreModules;
-                    if (typeof writeBatch === 'function') {
-                        const batch = writeBatch(db);
-                        chunk.forEach((docId) => {
-                            batch.delete(getImageDocRef(docId));
-                            batch.delete(getFullDocRef(docId));
-                        });
-                        cloudDeletePromise = batch.commit().catch((err) => {
-                            console.warn('Batch cloud delete warning:', err);
-                        });
-                    } else {
-                        cloudDeletePromise = Promise.all(
-                            chunk.map((docId) => Promise.all([
-                                deleteDoc(getImageDocRef(docId)).catch(() => {}),
-                                deleteDoc(getFullDocRef(docId)).catch(() => {})
-                            ]))
-                        );
-                    }
-                }
-
-                await Promise.all([localDeletePromise, cloudDeletePromise]);
-
-                chunk.forEach((docId) => {
-                    deletedEmbeddedIds.add(docId);
-                    actuallyDeletedIds.add(docId);
-                    selectedIds.delete(docId);
-                });
-
-                deletedCount += chunk.length;
-                showUploadProgressUI(
-                    deletedCount,
-                    totalToDelete,
-                    `${deletedCount} of ${totalToDelete} removed`,
-                    'Deleting Study Material...',
-                    true
-                );
-
-                // Remove deleted cards from DOM immediately so user sees instant visual progress
-                chunk.forEach((docId) => {
-                    const cardEl = galleryGrid.querySelector(`.gallery-card[data-id="${docId}"]`);
-                    if (cardEl) cardEl.remove();
-                });
-
-                // Yield briefly so the "Cancel" button click registers immediately
-                await new Promise((r) => setTimeout(r, 15));
+                chunks.push(idsToDelete.slice(i, i + CHUNK_SIZE));
             }
 
-            await idbSetMeta('deletedEmbeddedIds', Array.from(deletedEmbeddedIds));
-            localItems = localItems.filter((item) => !actuallyDeletedIds.has(item.id));
-            cloudItems = cloudItems.filter((item) => !actuallyDeletedIds.has(item.id));
-            cloudItemIds = new Set(cloudItems.map((item) => item.id));
+            showUploadProgressUI(0, totalToDelete, 'Removing images from this device...', 'Deleting Study Material...', true);
 
+            let nextChunkIndex = 0;
+            const deleteWorker = async () => {
+                while (!isDeleteCancelled) {
+                    const index = nextChunkIndex++;
+                    if (index >= chunks.length) return;
+                    const chunk = chunks[index];
+                    const chunkSet = new Set(chunk);
+
+                    // Optimistic UI: remove the cards immediately while cloud cleanup runs.
+                    const cardsToRemove = new Set(chunk);
+                    galleryGrid.querySelectorAll('.gallery-card').forEach((cardEl) => {
+                        if (cardsToRemove.has(cardEl.dataset.id)) cardEl.remove();
+                    });
+                    chunk.forEach((id) => {
+                        pendingDeleteIds.add(id);
+                        deletedEmbeddedIds.add(id);
+                        selectedIds.delete(id);
+                    });
+                    galleryItems = galleryItems.filter((item) => !chunkSet.has(item.id));
+                    localItems = localItems.filter((item) => !chunkSet.has(item.id));
+                    cloudItems = cloudItems.filter((item) => !chunkSet.has(item.id));
+                    cloudItemIds = new Set(cloudItems.map((item) => item.id));
+
+                    // Persist local removal and delete the matching cloud records at the same time.
+                    const localDeletePromise = idbBulkDeleteImages(chunk);
+                    const localMetaPromise = idbSetMeta('deletedEmbeddedIds', Array.from(deletedEmbeddedIds));
+                    const cloudDeletePromise = (isCloudActive && db && firestoreModules)
+                        ? deleteCloudImagesChunk(chunk)
+                        : Promise.resolve({ failedFirestoreIds: new Set(), storageFailures: 0 });
+                    const [, , cloudResult] = await Promise.all([localDeletePromise, localMetaPromise, cloudDeletePromise]);
+
+                    const failedIds = cloudResult.failedFirestoreIds || new Set();
+                    storageFailureCount += cloudResult.storageFailures || 0;
+                    if (failedIds.size) {
+                        // Roll back only records rejected by Firestore so they stay visible locally.
+                        const restoreItems = [];
+                        failedIds.forEach((id) => {
+                            pendingDeleteIds.delete(id);
+                            deletedEmbeddedIds.delete(id);
+                            const original = itemBackup.get(id);
+                            if (original) restoreItems.push(original);
+                        });
+                        if (restoreItems.length) {
+                            const restoreById = new Map(restoreItems.map((item) => [item.id, item]));
+                            localItems = localItems.filter((item) => !restoreById.has(item.id)).concat(restoreItems);
+                            await idbBulkSaveImages(restoreItems);
+                            await idbSetMeta('deletedEmbeddedIds', Array.from(deletedEmbeddedIds));
+                        }
+                    }
+
+                    chunk.forEach((id) => pendingDeleteIds.delete(id));
+                    const successfulCount = chunk.length - failedIds.size;
+                    attemptedCount += chunk.length;
+                    deletedCount += successfulCount;
+                    cloudFailureCount += failedIds.size;
+                    showUploadProgressUI(
+                        attemptedCount,
+                        totalToDelete,
+                        `${deletedCount} deleted${cloudFailureCount ? ` • ${cloudFailureCount} cloud failures` : ''}`,
+                        'Deleting Study Material...',
+                        true
+                    );
+                }
+            };
+
+            // Two bounded workers keep several Firestore chunks and Storage object
+            // deletes moving in parallel without flooding mobile connections.
+            await Promise.all([deleteWorker(), deleteWorker()]);
             isProcessingQueue = false;
+            isUploadCancelled = false;
+            pendingDeleteIds.clear();
+            await idbSetMeta('deletedEmbeddedIds', Array.from(deletedEmbeddedIds));
             rebuildGalleryItems();
+            updateCloudStatusBadge();
 
             if (isDeleteCancelled) {
-                completeUploadProgressUI(deletedCount, `Cancelled (${deletedCount} Deleted)`);
+                completeUploadProgressUI(deletedCount, `Stopped (${deletedCount} Deleted)`);
                 showToast(`Deletion stopped. ${deletedCount} image${deletedCount === 1 ? '' : 's'} deleted.`);
+            } else if (cloudFailureCount > 0 || storageFailureCount > 0) {
+                completeUploadProgressUI(deletedCount, `Deleted ${deletedCount} • Some Cloud Cleanup Failed`);
+                showToast(`Deleted ${deletedCount}. ${cloudFailureCount} cloud record(s) could not be deleted${storageFailureCount ? `; ${storageFailureCount} file(s) may remain in cloud storage` : ''}.`);
             } else {
                 completeUploadProgressUI(deletedCount, `Deleted ${deletedCount} Image${deletedCount === 1 ? '' : 's'}!`);
                 showToast(`Deleted ${deletedCount} image${deletedCount === 1 ? '' : 's'} from gallery & cloud.`);
@@ -2248,41 +2738,16 @@
                 if (!it.url) await ensureFullUrl(it);
                 if (!it.thumb && it.url) it.thumb = await makeThumbFromDataUrl(it.url);
             }
-            const { writeBatch, setDoc } = firestoreModules;
             let synced = 0;
-            const SYNC_BATCH_SIZE = 4;
+            lastCloudError = null;
+            const SYNC_BATCH_SIZE = CLOUD_BATCH_SIZE;
 
             for (let i = 0; i < unsyncedItems.length; i += SYNC_BATCH_SIZE) {
                 const subBatch = unsyncedItems.slice(i, i + SYNC_BATCH_SIZE);
-                try {
-                    if (typeof writeBatch === 'function') {
-                        const batch = writeBatch(db);
-                        subBatch.forEach((item) => {
-                            batch.set(getFullDocRef(item.id), cloudFullPayload(item));
-                                            batch.set(getImageDocRef(item.id), cloudMetaPayload(item));
-                        });
-                        await batch.commit();
-                    } else {
-                        for (const item of subBatch) {
-                            await writeItemToCloud(item);
-                        }
-                    }
-                    synced += subBatch.length;
-                    lastCloudError = null;
-                    if (!silent) {
-                        showUploadProgressUI(synced, unsyncedItems.length, `Synced ${synced} of ${unsyncedItems.length}...`, 'Syncing to Public Cloud...', false);
-                    }
-                } catch (err) {
-                    console.error('Cloud sync batch error, trying one by one:', err);
-                    for (const item of subBatch) {
-                        try {
-                            await writeItemToCloud(item);
-                            synced++;
-                            lastCloudError = null;
-                        } catch (singleErr) {
-                            lastCloudError = singleErr.code || singleErr.message || 'permission-denied';
-                        }
-                    }
+                const savedCount = await uploadItemsToCloudParallel(subBatch);
+                synced += savedCount;
+                if (!silent) {
+                    showUploadProgressUI(synced, unsyncedItems.length, `Synced ${synced} of ${unsyncedItems.length}...`, 'Syncing to Public Cloud...', false);
                 }
             }
 
@@ -3004,6 +3469,8 @@
         })();
 
         openGalleryBtn.addEventListener('click', () => {
+            // Use the cinematic intro time to fetch/decode thumbnails in advance.
+            warmGalleryImageCache(galleryItems);
             bombIntro.play();
         });
 
@@ -3174,13 +3641,15 @@
             }
 
             try {
-                const [{ initializeApp, getApps }, { getAuth, signInAnonymously, signInWithCustomToken }, firestoreMod] = await Promise.all([
+                const [{ initializeApp, getApps }, { getAuth, signInAnonymously, signInWithCustomToken }, firestoreMod, storageMod] = await Promise.all([
                     import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"),
                     import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"),
-                    import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js")
+                    import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"),
+                    import("https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js")
                 ]);
 
                 firestoreModules = firestoreMod;
+                storageModules = storageMod;
                 const { getFirestore, onSnapshot, getDoc } = firestoreMod;
 
                 const appName = isCustom ? 'study-material-cloud-' + configToUse.projectId : undefined;
@@ -3196,6 +3665,12 @@
                     db = getFirestore(app);
                 } catch (initErr) {
                     db = firestoreMod.initializeFirestore(app);
+                }
+                try {
+                    storage = storageModules.getStorage(app);
+                } catch (storageInitError) {
+                    storage = null;
+                    console.warn('Firebase Storage is not available; Firestore fallback will be used:', storageInitError);
                 }
                 auth = getAuth(app);
                 isUsingCustomCloud = Boolean(isCustom);
@@ -3259,6 +3734,7 @@
                         });
                         cloudItems = items;
                         cloudItemIds = new Set(items.map((item) => item.id));
+                        warmGalleryImageCache(items);
                         // Cache in the background; never wait for IndexedDB before showing cloud results.
                         persistCloudSnapshotToLocalCache(items).catch((cacheErr) => console.warn('Local cloud cache skipped:', cacheErr));
                         isCloudActive = true;
@@ -3306,6 +3782,7 @@
                 deletedEmbeddedIds = new Set(savedDeletedIds);
             }
             localItems = await idbGetAllImages();
+            warmGalleryImageCache(localItems);
             rebuildGalleryItems();
 
             // 2. Prioritize USER_FIREBASE_CONFIG (study-material-388b7) over any sandbox config
