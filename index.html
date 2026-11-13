@@ -1268,6 +1268,10 @@
             measurementId: "G-RSV7BEW1KP"
         };
 
+        // Firebase Storage switch. Your previous working version saved images in Firestore only.
+        // Keep this false unless Storage is enabled in Firebase Console AND its rules allow the owner to write.
+        const USE_FIREBASE_STORAGE = false;
+
         // --- Multi-Tier Storage State (User Primary Cloud + IndexedDB + Embedded) ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'study-material-gallery-app';
         const envFirebaseConfig = typeof __firebase_config !== 'undefined' && __firebase_config ? JSON.parse(__firebase_config) : null;
@@ -1401,6 +1405,11 @@
         const cloudCloseX = document.getElementById('cloud-close-x');
         const syncLocalToCloudBtn = document.getElementById('sync-local-to-cloud-btn');
         let lastCloudError = null;
+        let storageFailStreak = 0;
+        let storageSkipUntil = 0;
+        let lastStorageError = null;
+        let storageWarningShown = false;
+        let lastDeleteError = null;
 
         // Lightbox Elements
         const lightbox = document.getElementById('lightbox');
@@ -1815,7 +1824,7 @@
                 cloudModalBadge.className = 'text-xs font-semibold text-red-600';
                 if (cloudDiagnosticBox) {
                     cloudDiagnosticBox.className = 'p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 font-medium';
-                    cloudDiagnosticBox.innerHTML = `<b>Public Cloud Blocked (${lastCloudError}):</b><br/>Firestore rules denied this request. Check the published rules and make sure you are signed in with the owner Firebase account before uploading. Do not enable public writes; that would let visitors change or delete your materials.`;
+                    cloudDiagnosticBox.innerHTML = `<b>Public Cloud Blocked (${lastCloudError}):</b><br/>${/timeout|unavailable|network/i.test(String(lastCloudError)) ? 'The request timed out or the network blocked it. Check your internet connection and that Firestore Database is created in Firebase Console.' : 'Firestore rules denied this request. Check the published rules and make sure you are signed in with the owner Firebase account before uploading.'}${lastStorageError ? '<br/><b>Storage:</b> ' + lastStorageError + ' - open Firebase Console &rarr; Storage &rarr; Rules and allow signed-in owner writes to <code>study-materials/</code>.' : ''}<br/>Do not enable public writes; that would let visitors change or delete your materials.`;
                 }
                 return;
             }
@@ -2008,6 +2017,26 @@
             }));
             return results;
         }
+
+        // ---- Upload stall protection -------------------------------------------
+        // Firebase Storage retries a failing upload for up to 10 minutes and Firestore
+        // writes wait forever while the network/rules block them. Without a deadline
+        // the whole queue freezes on "Uploading...". Every cloud call now has one.
+        const STORAGE_UPLOAD_TIMEOUT_MS = 40000;
+        const FIRESTORE_WRITE_TIMEOUT_MS = 90000;
+        function withTimeout(promise, ms, code) {
+            let timer;
+            const timeout = new Promise((_, reject) => {
+                timer = setTimeout(() => {
+                    const err = new Error('Timed out after ' + Math.round(ms / 1000) + 's');
+                    err.code = code || 'timeout';
+                    reject(err);
+                }, ms);
+            });
+            return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+        }
+        // After repeated Storage failures, skip Storage for a while so every batch
+        // does not wait for the same failure again (Firestore fallback is used).
 
         const FIREBASE_STORAGE_FOLDER = 'study-materials';
         function getImageStoragePath(imageId) {
@@ -2323,7 +2352,9 @@
             );
 
             if (!isProcessingQueue) {
-                processUnlimitedUploadQueue();
+                processUnlimitedUploadQueue()
+                    .catch((err) => { console.error('Upload queue crashed:', err); showToast('Upload stopped unexpectedly. Please try again.'); })
+                    .finally(() => { isProcessingQueue = false; });
             }
         }
 
@@ -2333,7 +2364,7 @@
         // - worker pool: many images compress at the same time
         // - cloud upload runs in the background while the next images compress
         // ==========================================
-        const CLOUD_BATCH_SIZE = 8; // 8 images = 16 Firestore writes, safely below the 500-write batch limit and typical 10 MiB request ceiling
+        const CLOUD_BATCH_SIZE = 6; // 8 images = 16 Firestore writes, safely below the 500-write batch limit and typical 10 MiB request ceiling
 
         async function decodeForUpload(file) {
             if (typeof createImageBitmap === 'function') {
@@ -2435,7 +2466,8 @@
             const storageUploadConcurrency = lowMemoryDevice ? 2 : 5;
             const canUseStorage = Boolean(storage && storageModules &&
                 typeof storageModules.uploadBytes === 'function' &&
-                typeof storageModules.getDownloadURL === 'function');
+                typeof storageModules.getDownloadURL === 'function') &&
+                Date.now() >= storageSkipUntil;
             const storageFallbacks = { count: 0 };
 
             const preparedItems = await mapWithConcurrency(items, canUseStorage ? storageUploadConcurrency : 6, async (item) => {
@@ -2446,22 +2478,35 @@
                     const imageBlob = (typeof Blob !== 'undefined' && item.blob instanceof Blob)
                         ? item.blob
                         : dataUrlToBlob(item.url);
-                    const uploaded = await storageModules.uploadBytes(objectRef, imageBlob, {
+                    const uploaded = await withTimeout(storageModules.uploadBytes(objectRef, imageBlob, {
                         contentType: imageBlob.type || 'image/webp',
                         cacheControl: 'public, max-age=31536000, immutable',
                         customMetadata: { imageId: item.id }
-                    });
-                    const downloadUrl = await storageModules.getDownloadURL(uploaded.ref || objectRef);
+                    }), STORAGE_UPLOAD_TIMEOUT_MS, 'storage/timeout');
+                    const downloadUrl = await withTimeout(
+                        storageModules.getDownloadURL(uploaded.ref || objectRef),
+                        20000, 'storage/timeout'
+                    );
+                    storageFailStreak = 0;
                     return { ...item, url: downloadUrl, storagePath: objectPath };
                 } catch (storageError) {
-                    // Some Firebase projects have Storage disabled or stricter rules.
-                    // Keep the old Firestore data-URL route as a reliable fallback.
+                    // Storage disabled, rules blocking, or network problem.
+                    // Fall back to the Firestore data-URL route so the upload never hangs.
                     storageFallbacks.count++;
-                    console.warn('Firebase Storage upload unavailable; using Firestore fallback:', storageError);
-                    try { await storageModules.deleteObject(objectRef); } catch (cleanupError) { /* no object to clean up */ }
+                    storageFailStreak++;
+                    lastStorageError = (storageError && (storageError.code || storageError.message)) || 'storage-error';
+                    console.warn('Firebase Storage upload failed (' + lastStorageError + '); using Firestore fallback:', storageError);
+                    if (storageFailStreak >= 3) storageSkipUntil = Date.now() + 5 * 60 * 1000;
+                    // Best-effort cleanup, never allowed to block the upload.
+                    withTimeout(storageModules.deleteObject(objectRef), 8000, 'storage/timeout').catch(() => {});
                     return { ...item, storagePath: undefined };
                 }
             });
+
+            if (storageFallbacks.count > 0 && !storageWarningShown) {
+                storageWarningShown = true;
+                showToast('Firebase Storage upload failed (' + lastStorageError + '). Images were saved through Firestore instead. Check your Storage rules.');
+            }
 
             const groups = [];
             for (let i = 0; i < preparedItems.length; i += CLOUD_BATCH_SIZE) {
@@ -2471,7 +2516,7 @@
             let successCount = 0;
             const failedItems = [];
             let firstCloudError = null;
-            await mapWithConcurrency(groups, 2, async (subBatch) => {
+            await mapWithConcurrency(groups, Math.max(1, groups.length), async (subBatch) => {
                 try {
                     if (typeof writeBatch === 'function') {
                         const batch = writeBatch(db);
@@ -2479,7 +2524,7 @@
                             batch.set(getFullDocRef(item.id), cloudFullPayload(item));
                             batch.set(getImageDocRef(item.id), cloudMetaPayload(item));
                         });
-                        await batch.commit();
+                        await withTimeout(batch.commit(), FIRESTORE_WRITE_TIMEOUT_MS, 'firestore/timeout');
                         successCount += subBatch.length;
                         return;
                     }
@@ -2488,10 +2533,10 @@
                     console.warn('Cloud batch write failed; retrying images individually:', batchError);
                     const outcomes = await mapWithConcurrency(subBatch, 4, async (item) => {
                         try {
-                            await Promise.all([
+                            await withTimeout(Promise.all([
                                 setDoc(getFullDocRef(item.id), cloudFullPayload(item)),
                                 setDoc(getImageDocRef(item.id), cloudMetaPayload(item))
-                            ]);
+                            ]), FIRESTORE_WRITE_TIMEOUT_MS, 'firestore/timeout');
                             successCount++;
                             return true;
                         } catch (singleError) {
@@ -2511,12 +2556,12 @@
                 // clean up their binary object so retries start from a clean state.
                 await mapWithConcurrency(failedItems, 6, async (item) => {
                     try {
-                        await Promise.all([
+                        await withTimeout(Promise.all([
                             firestoreModules.deleteDoc(getImageDocRef(item.id)).catch(() => {}),
                             firestoreModules.deleteDoc(getFullDocRef(item.id)).catch(() => {})
-                        ]);
+                        ]), 8000, 'firestore/timeout');
                     } catch (cleanupError) { /* best-effort metadata cleanup */ }
-                    if (item.storagePath) await deleteStorageImageObject(item.id);
+                    if (item.storagePath) { try { await withTimeout(deleteStorageImageObject(item.id), 8000, 'storage/timeout'); } catch (e) {} }
                 });
             }
 
@@ -2531,8 +2576,8 @@
             const cores = navigator.hardwareConcurrency || 4;
             const deviceMemory = navigator.deviceMemory || 4;
             // Balanced for phones: fewer simultaneous full-size canvases on low-memory devices.
-            const WORKERS = Math.max(2, Math.min(6, Math.floor(cores / 2), deviceMemory <= 2 ? 2 : deviceMemory <= 4 ? 3 : 5));
-            const MAX_CLOUD_JOBS_IN_FLIGHT = 2; // bounded cloud batches avoid network/memory spikes
+            const WORKERS = Math.max(4, Math.min(8, navigator.hardwareConcurrency || 6)); // same as your previous fast version
+            const MAX_CLOUD_JOBS_IN_FLIGHT = 3; // bounded cloud batches avoid network/memory spikes
             let cloudSuccessCount = 0;
             const pendingCloudJobs = new Set();
             let readyBuffer = [];
@@ -2739,20 +2784,22 @@
                             batch.delete(getImageDocRef(docId));
                             batch.delete(getFullDocRef(docId));
                         });
-                        await batch.commit();
+                        await withTimeout(batch.commit(), 60000, 'firestore/timeout');
                     } else {
                         throw new Error('Firestore batch deletes are unavailable.');
                     }
                 } catch (batchError) {
                     console.warn('Cloud delete batch failed; retrying individual records:', batchError);
+                    lastDeleteError = (batchError && (batchError.code || batchError.message)) || 'delete-failed';
                     const outcomes = await mapWithConcurrency(ids, 12, async (docId) => {
                         try {
-                            await Promise.all([
+                            await withTimeout(Promise.all([
                                 deleteDoc(getImageDocRef(docId)),
                                 deleteDoc(getFullDocRef(docId))
-                            ]);
+                            ]), 30000, 'firestore/timeout');
                             return true;
                         } catch (error) {
+                            lastDeleteError = (error && (error.code || error.message)) || 'delete-failed';
                             console.warn('Cloud delete failed for image:', docId, error);
                             return false;
                         }
@@ -2789,6 +2836,7 @@
 
             isDeleteCancelled = false;
             isUploadCancelled = false;
+            lastDeleteError = null;
             cancelOperationBtn.textContent = 'Cancel';
             cancelOperationBtn.disabled = false;
             isProcessingQueue = true;
@@ -2872,7 +2920,15 @@
 
             // Two bounded workers keep several Firestore chunks and Storage object
             // deletes moving in parallel without flooding mobile connections.
-            await Promise.all([deleteWorker(), deleteWorker()]);
+            try {
+                await Promise.all([deleteWorker(), deleteWorker()]);
+            } catch (deleteCrash) {
+                console.error('Delete crashed:', deleteCrash);
+                lastDeleteError = lastDeleteError || (deleteCrash && (deleteCrash.code || deleteCrash.message)) || 'delete-crashed';
+                cloudFailureCount = Math.max(cloudFailureCount, 1);
+            } finally {
+                isProcessingQueue = false;
+            }
             isProcessingQueue = false;
             isUploadCancelled = false;
             pendingDeleteIds.clear();
@@ -2885,7 +2941,7 @@
                 showToast(`Deletion stopped. ${deletedCount} image${deletedCount === 1 ? '' : 's'} deleted.`);
             } else if (cloudFailureCount > 0 || storageFailureCount > 0) {
                 completeUploadProgressUI(deletedCount, `Deleted ${deletedCount} • Some Cloud Cleanup Failed`);
-                showToast(`Deleted ${deletedCount}. ${cloudFailureCount} cloud record(s) could not be deleted${storageFailureCount ? `; ${storageFailureCount} file(s) may remain in cloud storage` : ''}.`);
+                showToast(`Deleted ${deletedCount}. ${cloudFailureCount} cloud record(s) could not be deleted${lastDeleteError ? ' (' + lastDeleteError + ')' : ''}${/permission/i.test(String(lastDeleteError)) ? '. Your Firestore rules must allow the signed-in owner to delete study_materials and study_full' : ''}${storageFailureCount ? `; ${storageFailureCount} file(s) may remain in cloud storage` : ''}.`);
             } else {
                 completeUploadProgressUI(deletedCount, `Deleted ${deletedCount} Image${deletedCount === 1 ? '' : 's'}!`);
                 showToast(`Deleted ${deletedCount} image${deletedCount === 1 ? '' : 's'} from gallery & cloud.`);
@@ -3278,6 +3334,7 @@
                 const { signInWithEmailAndPassword } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
                 const credential = await signInWithEmailAndPassword(auth, email, password);
                 currentUser = credential.user;
+                storageFailStreak = 0; storageSkipUntil = 0; storageWarningShown = false; lastStorageError = null;
                 isOwner = true;
                 updateOwnerUI();
                 closeOwnerModal();
@@ -3830,11 +3887,13 @@
                     import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"),
                     import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"),
                     import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"),
-                    import("https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js")
+                    USE_FIREBASE_STORAGE
+                        ? import("https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js").catch((e) => { console.warn('Storage SDK failed to load:', e); return null; })
+                        : Promise.resolve(null)
                 ]);
 
                 firestoreModules = firestoreMod;
-                storageModules = storageMod;
+                storageModules = USE_FIREBASE_STORAGE ? storageMod : null;
                 const { getFirestore, onSnapshot, getDoc } = firestoreMod;
 
                 const appName = isCustom ? 'study-material-cloud-' + configToUse.projectId : undefined;
@@ -3852,7 +3911,13 @@
                     db = firestoreMod.initializeFirestore(app);
                 }
                 try {
+                    if (!storageModules) throw new Error('Firebase Storage disabled (Firestore-only mode).');
                     storage = storageModules.getStorage(app);
+                    // Default is 10 minutes of silent retrying - that is what made uploads look stuck.
+                    try {
+                        storage.maxUploadRetryTime = 20000;
+                        storage.maxOperationRetryTime = 15000;
+                    } catch (retryCfgError) { /* older SDKs: ignore */ }
                 } catch (storageInitError) {
                     storage = null;
                     console.warn('Firebase Storage is not available; Firestore fallback will be used:', storageInitError);
