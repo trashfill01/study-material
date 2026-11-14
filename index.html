@@ -1124,7 +1124,7 @@
             </div>
 
             <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 text-xs text-slate-600 space-y-1.5 mb-4 leading-relaxed">
-                <p class="font-semibold text-slate-800">Your Firebase Project (<code class="text-blue-600">study-material-388b7</code>) Status:</p>
+                <p class="font-semibold text-slate-800">Your Firebase Project (<code class="text-blue-600">studymaterial-4cc53</code>) Status:</p>
                 <div id="cloud-diagnostic-box" class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 font-medium">Checking cloud connection...</div>
                 <ol class="list-decimal list-inside space-y-1 pt-1">
                     <li>In Firebase Console → <b>Firestore Database</b> → <b>Rules</b> tab, replace the rules with the block shown in the red box (public read + write) and click <b>Publish</b>. If you started in "Test mode", those rules <b>expire after 30 days</b> and then everything is denied.</li>
@@ -1326,7 +1326,7 @@
     <!-- EMBEDDED PUBLIC DATA (FOR WEB HOST EXPORT) -->
     <!-- ========================================== -->
     <script id="embedded-public-data">
-        window.__EMBEDDED_GALLERY_DATA__ = {"ownerPinHash":"790a102bc6c143e622f67f53e7a87df9583335a382edfaba5e3d247180a75bf3","customFirebaseConfig":{"apiKey":"AIzaSyBVKgC5-AA-ZXMorefQxUMlf5bPbFOj5uU","authDomain":"study-material-388b7.firebaseapp.com","projectId":"study-material-388b7","storageBucket":"study-material-388b7.firebasestorage.app","messagingSenderId":"716152177751","appId":"1:716152177751:web:07282838df976c05218f12","measurementId":"G-RSV7BEW1KP"},"images":[]};
+        window.__EMBEDDED_GALLERY_DATA__ = {"ownerPinHash":"790a102bc6c143e622f67f53e7a87df9583335a382edfaba5e3d247180a75bf3","customFirebaseConfig":{"apiKey":"AIzaSyBNYjb4phtvTr_nPh5MpCsTC3US3ihvGKU","authDomain":"studymaterial-4cc53.firebaseapp.com","projectId":"studymaterial-4cc53","storageBucket":"studymaterial-4cc53.firebasestorage.app","messagingSenderId":"985169765116","appId":"1:985169765116:web:c6032a6d7d17e747c1ed79","measurementId":"G-5SMRN7FVTN"},"images":[]};
     </script>
 
     <!-- ========================================== -->
@@ -1334,16 +1334,19 @@
     <!-- ========================================== -->
     <script type="module">
         // ============================================================================
-        // PRIMARY LIVE CLOUD DATABASE: USER'S FIREBASE CONFIG (study-material-388b7)
+        // PRIMARY LIVE CLOUD DATABASE: USER'S FIREBASE CONFIG (studymaterial-4cc53)
         // ============================================================================
+        // Only this Firebase Authentication account is allowed to enter Owner Mode.
+        const FIREBASE_OWNER_UID = "8cuT0hti1ceurHDA2YTUuix4YIm2";
+
         const USER_FIREBASE_CONFIG = {
-            apiKey: "AIzaSyBVKgC5-AA-ZXMorefQxUMlf5bPbFOj5uU",
-            authDomain: "study-material-388b7.firebaseapp.com",
-            projectId: "study-material-388b7",
-            storageBucket: "study-material-388b7.firebasestorage.app",
-            messagingSenderId: "716152177751",
-            appId: "1:716152177751:web:07282838df976c05218f12",
-            measurementId: "G-RSV7BEW1KP"
+            apiKey: "AIzaSyBNYjb4phtvTr_nPh5MpCsTC3US3ihvGKU",
+            authDomain: "studymaterial-4cc53.firebaseapp.com",
+            projectId: "studymaterial-4cc53",
+            storageBucket: "studymaterial-4cc53.firebasestorage.app",
+            messagingSenderId: "985169765116",
+            appId: "1:985169765116:web:c6032a6d7d17e747c1ed79",
+            measurementId: "G-5SMRN7FVTN"
         };
 
         // Firebase Storage switch. Your previous working version saved images in Firestore only.
@@ -1910,7 +1913,7 @@
             if (isCloudActive && isUsingCustomCloud) {
                 cloudStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
                 cloudStatusText.textContent = `Public Cloud (${cloudCount} Live)`;
-                cloudModalBadge.textContent = `Connected to ${activeCustomConfig?.projectId || 'study-material-388b7'} • ${cloudCount} Public / ${localCount} Local`;
+                cloudModalBadge.textContent = `Connected to ${activeCustomConfig?.projectId || 'studymaterial-4cc53'} • ${cloudCount} Public / ${localCount} Local`;
                 cloudModalBadge.className = 'text-xs font-semibold text-emerald-600';
                 if (cloudDiagnosticBox) {
                     cloudDiagnosticBox.className = 'p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-medium';
@@ -1924,7 +1927,7 @@
             } else {
                 cloudStatusDot.className = 'w-2 h-2 rounded-full bg-amber-400';
                 cloudStatusText.textContent = 'Connecting Cloud...';
-                cloudModalBadge.textContent = 'Connecting to study-material-388b7 Firestore...';
+                cloudModalBadge.textContent = 'Connecting to studymaterial-4cc53 Firestore...';
                 cloudModalBadge.className = 'text-xs font-medium text-amber-600';
             }
         }
@@ -2007,7 +2010,7 @@
         }
 
         // ==========================================
-        // CLOUD PATH HELPERS (ROOT COLLECTIONS FOR study-material-388b7)
+        // CLOUD PATH HELPERS (ROOT COLLECTIONS FOR studymaterial-4cc53)
         // ==========================================
         function getImagesCollectionRef() {
             const { collection } = firestoreModules;
@@ -3411,6 +3414,15 @@
             try {
                 const { signInWithEmailAndPassword } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
                 const credential = await signInWithEmailAndPassword(auth, email, password);
+                if (!credential.user || credential.user.uid !== FIREBASE_OWNER_UID) {
+                    const { signOut } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+                    await signOut(auth);
+                    currentUser = auth.currentUser || null;
+                    isOwner = false;
+                    updateOwnerUI();
+                    showToast('This Firebase account is not the configured website owner.');
+                    return;
+                }
                 currentUser = credential.user;
                 storageFailStreak = 0; storageSkipUntil = 0; storageWarningShown = false; lastStorageError = null;
                 isOwner = true;
@@ -3955,7 +3967,7 @@
         }, { passive: true });
 
         // ==========================================
-        // CONNECT TO FIREBASE CLOUD (USER'S study-material-388b7 PRIMARY)
+        // CONNECT TO FIREBASE CLOUD (USER'S studymaterial-4cc53 PRIMARY)
         // ==========================================
         async function connectToFirebaseCloud(configToUse, isCustom) {
             if (!configToUse || !configToUse.apiKey || !configToUse.projectId) {
@@ -3963,10 +3975,11 @@
             }
 
             try {
-                const [{ initializeApp, getApps }, { getAuth, signInAnonymously, signInWithCustomToken }, firestoreMod, storageMod] = await Promise.all([
+                const [{ initializeApp, getApps }, authMod, firestoreMod, analyticsMod, storageMod] = await Promise.all([
                     import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"),
                     import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"),
                     import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"),
+                    import("https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js").catch((e) => { console.warn('Firebase Analytics SDK failed to load:', e); return null; }),
                     USE_FIREBASE_STORAGE
                         ? import("https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js").catch((e) => { console.warn('Storage SDK failed to load:', e); return null; })
                         : Promise.resolve(null)
@@ -3975,6 +3988,7 @@
                 firestoreModules = firestoreMod;
                 storageModules = USE_FIREBASE_STORAGE ? storageMod : null;
                 const { getFirestore, onSnapshot, getDoc } = firestoreMod;
+                const { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserLocalPersistence } = authMod;
 
                 const appName = isCustom ? 'study-material-cloud-' + configToUse.projectId : undefined;
                 const existingApps = getApps();
@@ -3982,6 +3996,19 @@
                 const app = matchingApp
                     ? matchingApp
                     : (!isCustom && existingApps.length > 0 ? existingApps[0] : initializeApp(configToUse, appName));
+
+                // Initialize Google Analytics for supported browsers. Analytics is optional
+                // and must never prevent the study-material Firestore connection from working.
+                if (analyticsMod && typeof window !== 'undefined') {
+                    try {
+                        const analyticsSupported = await analyticsMod.isSupported();
+                        if (analyticsSupported) {
+                            analyticsMod.getAnalytics(app);
+                        }
+                    } catch (analyticsError) {
+                        console.warn('Firebase Analytics could not be initialized:', analyticsError);
+                    }
+                }
 
                 // Let the Firebase SDK select its fastest supported transport.
                 // Forced long-polling can add substantial delay on normal networks.
@@ -4006,23 +4033,58 @@
                 isUsingCustomCloud = Boolean(isCustom);
                 authWarningNote = '';
 
-                // Attempt Anonymous Auth, but never let it block loading (max 3 seconds)
+                // Keep the owner's email/password session across reloads. Do not replace an
+                // already signed-in owner with a fresh anonymous session on page startup.
                 try {
-                    await Promise.race([(async () => {
-                    if (!isCustom && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        const cred = await signInWithCustomToken(auth, __initial_auth_token);
-                        currentUser = cred.user;
-                    } else {
-                        const cred = await signInAnonymously(auth);
-                        currentUser = cred.user;
+                    await setPersistence(auth, browserLocalPersistence);
+                } catch (persistenceErr) {
+                    console.warn('Firebase auth persistence setting could not be changed:', persistenceErr);
+                }
+
+                let authStateReadyResolve;
+                const authStateReady = new Promise((resolve) => { authStateReadyResolve = resolve; });
+                let firstAuthState = true;
+                onAuthStateChanged(auth, (user) => {
+                    currentUser = user || null;
+                    isOwner = Boolean(user && user.uid === FIREBASE_OWNER_UID);
+                    updateOwnerUI();
+                    if (firstAuthState) {
+                        firstAuthState = false;
+                        authStateReadyResolve(user || null);
                     }
-                    })(), new Promise((r) => setTimeout(r, 1200))]);
+                }, (authObserverError) => {
+                    console.warn('Firebase auth state listener failed:', authObserverError);
+                    if (firstAuthState) {
+                        firstAuthState = false;
+                        authStateReadyResolve(null);
+                    }
+                });
+
+                // Wait for Firebase to restore any saved owner session before using visitor auth.
+                try {
+                    const restoredUser = await Promise.race([
+                        authStateReady,
+                        new Promise((resolve) => setTimeout(() => resolve(auth.currentUser || null), 3000))
+                    ]);
+                    if (!restoredUser) {
+                        if (!isCustom && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            const cred = await signInWithCustomToken(auth, __initial_auth_token);
+                            currentUser = cred.user;
+                        } else {
+                            const cred = await signInAnonymously(auth);
+                            currentUser = cred.user;
+                        }
+                    } else {
+                        currentUser = restoredUser;
+                        isOwner = restoredUser.uid === FIREBASE_OWNER_UID;
+                    }
+                    updateOwnerUI();
                 } catch (authErr) {
                     const code = authErr && authErr.code ? authErr.code : '';
                     if (code === 'auth/operation-not-allowed' || code === 'auth/admin-restricted-operation') {
-                        authWarningNote = 'Test Mode Active (Anonymous Auth optional)';
+                        authWarningNote = 'Anonymous Authentication is disabled. Enable it for public visitor sessions.';
                     }
-                    console.warn('Proceeding directly with Firestore Test Mode rules:', authErr);
+                    console.warn('Firebase authentication initialization warning:', authErr);
                 }
 
                 // Fetch Owner PIN hash from study_settings/owner_config if set in cloud
@@ -4098,7 +4160,7 @@
         }
 
         // ==========================================
-        // INITIALIZE STORAGE (USER'S study-material-388b7 FIRST)
+        // INITIALIZE STORAGE (USER'S studymaterial-4cc53 FIRST)
         // ==========================================
         async function initGalleryApp() {
             // 1. Initialize IndexedDB & load local/embedded data immediately (0ms wait)
@@ -4115,7 +4177,7 @@
             warmGalleryImageCache(localItems);
             rebuildGalleryItems();
 
-            // 2. Prioritize USER_FIREBASE_CONFIG (study-material-388b7) over any sandbox config
+            // 2. Prioritize USER_FIREBASE_CONFIG (studymaterial-4cc53) over any sandbox config
             const embeddedCustomConfig = window.__EMBEDDED_GALLERY_DATA__ && window.__EMBEDDED_GALLERY_DATA__.customFirebaseConfig;
             const idbCustomConfig = await idbGetMeta('customFirebaseConfig');
 
@@ -4130,7 +4192,7 @@
             if (activeCustomConfig) {
                 const ok = await connectToFirebaseCloud(activeCustomConfig, true);
                 if (ok && localItems.length > 0) {
-                    // Automatically push any existing local images to study-material-388b7 so they appear on all devices
+                    // Automatically push any existing local images to studymaterial-4cc53 so they appear on all devices
                     setTimeout(() => syncAllImagesToCloud(true), 1200);
                 }
                 return;
